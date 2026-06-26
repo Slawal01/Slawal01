@@ -115,6 +115,15 @@ FROM premier_source
 WHERE "GPO ID" != "Direct Parent GPO ID";
 
 
+-- Pass 4: Premier Programs (AscenDrive, KIINDO, SURPASS)
+-- Run after Pass 3 so member rows exist
+SELECT "Address ID" AS native_member_id, 'AscenDrive' AS program_name, "AscenDrive Start Date" AS start_date, "AscenDrive End Date" AS end_date FROM premier_source WHERE "AscenDrive Start Date" IS NOT NULL
+UNION ALL
+SELECT "Address ID", 'KIINDO', "KIINDO Start Date", "KIINDO End Date" FROM premier_source WHERE "KIINDO Start Date" IS NOT NULL
+UNION ALL
+SELECT "Address ID", 'SURPASS', "SURPASS Start Date", "SURPASS End Date" FROM premier_source WHERE "SURPASS Start Date" IS NOT NULL;
+
+
 -- ============================================================
 -- VIZIENT
 -- ============================================================

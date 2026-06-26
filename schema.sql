@@ -161,6 +161,21 @@ CREATE TABLE member_group (
 );
 
 -- ============================================================
+-- MEMBER PROGRAM
+-- Named programs with start/end dates
+-- Premier: AscenDrive, KIINDO, SURPASS
+-- ============================================================
+CREATE TABLE member_program (
+    id              SERIAL PRIMARY KEY,
+    member_id       INT          NOT NULL REFERENCES member(id) ON DELETE CASCADE,
+    program_name    VARCHAR(100) NOT NULL,  -- 'AscenDrive', 'KIINDO', 'SURPASS'
+    start_date      DATE,
+    end_date        DATE,
+
+    CONSTRAINT uq_member_program UNIQUE (member_id, program_name)
+);
+
+-- ============================================================
 -- MEMBER AFFILIATION
 -- Multi-value aggregation affiliations with date ranges
 -- Premier: Aggregation Affiliation 1/2/3 with Start/End Dates
@@ -187,6 +202,7 @@ CREATE INDEX idx_member_direct_parent   ON member (direct_parent_id);
 CREATE INDEX idx_member_dea_number      ON member_dea (dea_number);
 CREATE INDEX idx_member_coid_hist       ON member_coid_history (member_id);
 CREATE INDEX idx_member_group           ON member_group (member_id);
+CREATE INDEX idx_member_program         ON member_program (member_id);
 CREATE INDEX idx_member_affiliation     ON member_affiliation (member_id);
 
 -- ============================================================

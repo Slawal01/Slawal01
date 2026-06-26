@@ -218,6 +218,21 @@ Stores multi-value group affiliations. One row per group per member.
 
 ---
 
+### `member_program`
+Stores named program enrollments with start and end dates. One row per program per member.
+
+| Column | Type | Description |
+|---|---|---|
+| id | INT | Primary key |
+| member_id | INT | FK → member |
+| program_name | VARCHAR | 'AscenDrive', 'KIINDO', 'SURPASS' |
+| start_date | DATE | Program start date |
+| end_date | DATE | Program end date |
+
+**Used by:** Premier only
+
+---
+
 ### `member_affiliation`
 Stores aggregation affiliations with date ranges. One row per affiliation per member.
 
@@ -279,6 +294,9 @@ Stores aggregation affiliations with date ranges. One row per affiliation per me
 | Membership Start Date | member | membership_eligible_date |
 | Committed Program Eligibility | member | committed_program_eligibility |
 | DEA # | member_dea | dea_number |
+| AscenDrive Start/End Date | member_program | program_name='AscenDrive', start_date, end_date |
+| KIINDO Start/End Date | member_program | program_name='KIINDO', start_date, end_date |
+| SURPASS Start/End Date | member_program | program_name='SURPASS', start_date, end_date |
 | Aggregation Affiliation 1/2/3 + Start/End Dates | member_affiliation | affiliation, start_date, end_date |
 
 ### Vizient → Schema
