@@ -25,8 +25,8 @@ GPO member data is used to track healthcare facility memberships, hierarchy rela
 | **One member table for all GPOs** | Members from all three GPOs live in the same `member` table, distinguished by `gpo_entity_id` |
 | **Unique key per GPO** | `UNIQUE(gpo_entity_id, native_member_id)` prevents duplicate members within each GPO |
 | **Self-referencing hierarchy** | Top Parents, Direct Parents, and Members are all rows in the same `member` table — parents reference themselves |
-| **HealthTrust deduplication** | Source data has one row per DEA number per member. DEA numbers are moved to a child table (`member_dea`) to eliminate duplicate member rows |
-| **COID is not unique (HealthTrust)** | COID changes over time. GPOID is the stable key. Prior COID history is preserved in `member_coid_history` |
+| **HealthTrust deduplication** | Source data has one row per DEA number per member. Rows must be deduplicated on GPOID before loading into the `member` table |
+| **COID is not unique (HealthTrust)** | COID changes over time. GPOID is the stable key |
 
 ---
 
@@ -83,7 +83,7 @@ Because parent rows must exist before child rows can reference them, data must b
 | **Pass 1** | Top Parents | `top_parent_id = direct_parent_id = own ID` |
 | **Pass 2** | Direct Parents | `top_parent_id = direct_parent_id ≠ own ID` |
 | **Pass 3** | Leaf Members | `top_parent_id ≠ direct_parent_id` |
-| **Pass 4** | Child records | DEA numbers, contacts, COID history, groups, affiliations |
+| **Pass 4** | Child records | DEA numbers (HT), programs (Premier), groups (Vizient), affiliations (Premier) |
 
 ---
 
@@ -103,8 +103,6 @@ Registry of the three GPOs. Seeded with fixed values on setup.
 ### `member`
 Core table. One row per unique member per GPO after deduplication.
 
-**Key columns:**
-
 | Column | Type | Source GPO | Description |
 |---|---|---|---|
 | id | INT | All | Primary key |
@@ -112,42 +110,24 @@ Core table. One row per unique member per GPO after deduplication.
 | native_member_id | VARCHAR | All | GPOID / Address ID / LIC |
 | premier_gpo_id | VARCHAR | Premier | Premier GPO ID (secondary to Address ID) |
 | vizient_member_id | VARCHAR | Vizient | Numeric Member ID (secondary to LIC) |
-| current_coid | VARCHAR | HealthTrust | Current COID (not unique, changes over time) |
-| ccn | VARCHAR | HealthTrust | CMS Certification Number |
 | name1 | VARCHAR | All | Primary name |
 | name2 | VARCHAR | HT, Premier | Secondary name |
 | override_name | VARCHAR | Premier | Override Name |
-| address_type | VARCHAR | HT, Premier | Address type |
-| address1–3 | VARCHAR | All | Street address lines |
-| city, state, postal_code, country | VARCHAR | All | Location fields |
-| phone, fax | VARCHAR | HealthTrust | Contact numbers |
+| address_type | VARCHAR | Premier | Address type |
+| address1 | VARCHAR | All | Address line 1 |
+| address2 | VARCHAR | All | Address line 2 |
+| address3 | VARCHAR | HT, Premier | Address line 3 |
+| city | VARCHAR | All | City |
+| state | VARCHAR | All | State / Province |
+| postal_code | VARCHAR | All | Postal / Zip Code |
+| country | VARCHAR | HT, Premier | Country |
 | top_parent_id | INT | All | FK → member (self-ref, top of hierarchy) |
 | direct_parent_id | INT | All | FK → member (self-ref, direct parent) |
-| relationship_to_gpo | VARCHAR | HealthTrust | Member's relationship to the GPO |
 | relationship_to_top_parent | VARCHAR | Premier | Relationship to Top Parent |
-| relationship_to_direct_parent | VARCHAR | HT, Premier | Relationship to Direct Parent |
+| relationship_to_direct_parent | VARCHAR | Premier | Relationship to Direct Parent |
 | member_status | VARCHAR | HT, Premier | Active / Inactive / etc. |
 | membership_eligible_date | DATE | All | HT: Eligible Date / Premier: Start Date / Vizient: Member Date |
-| membership_ineligible_date | DATE | HealthTrust | Date membership ended |
-| org_status | VARCHAR | HealthTrust | Organizational status |
 | committed_program_eligibility | VARCHAR | Premier | Committed program eligibility |
-| class_of_trade | VARCHAR | HealthTrust | Class of trade classification |
-| facility_type | VARCHAR | HealthTrust | Type of facility |
-| licensed_beds | INT | HealthTrust | Number of licensed beds |
-| company_name | VARCHAR | HealthTrust | Company name |
-| group_name | VARCHAR | HealthTrust | Group name |
-| division | VARCHAR | HealthTrust | Division |
-| market | VARCHAR | HealthTrust | Market |
-| pharmacy_eligible_date | DATE | HealthTrust | Pharmacy program start |
-| pharmacy_ineligible_date | DATE | HealthTrust | Pharmacy program end |
-| non_pharmacy_eligible_date | DATE | HealthTrust | Non-pharmacy program start |
-| non_pharmacy_ineligible_date | DATE | HealthTrust | Non-pharmacy program end |
-| hrsa_flag | BOOLEAN | HealthTrust | HRSA (340B) eligible flag |
-| hrsa_number | VARCHAR | HealthTrust | HRSA number |
-| hrsa_eligible_date | DATE | HealthTrust | HRSA eligibility start |
-| hrsa_ineligible_date | DATE | HealthTrust | HRSA eligibility end |
-| dsh_flag | BOOLEAN | HealthTrust | Disproportionate Share Hospital flag |
-| advantage_trust_flag | BOOLEAN | HealthTrust | AdvantageTrust flag |
 | supply_program | VARCHAR | Vizient | Supply program name |
 | amc_tier_pricing | VARCHAR | Vizient | Academic Medical Center tier pricing |
 | comments | TEXT | HealthTrust | Free-text comments |
@@ -157,7 +137,7 @@ Core table. One row per unique member per GPO after deduplication.
 ### `member_dea`
 Stores DEA registrations. One row per DEA number per member.
 
-> **Note:** HealthTrust source data contains one row per DEA number per member, causing apparent duplicates. Moving DEA numbers to this child table eliminates those duplicates in the `member` table.
+> **Note:** HealthTrust source data contains one row per DEA number per member, causing apparent duplicates. Rows must be deduplicated on GPOID before loading. DEA numbers are stored here for reference.
 
 | Column | Type | Description |
 |---|---|---|
@@ -183,7 +163,7 @@ Stores named contacts for a member. One row per contact type per member.
 | fax | VARCHAR | Fax number |
 | email | VARCHAR | Email address |
 
-**Used by:** HealthTrust
+**Used by:** HealthTrust only
 
 ---
 
@@ -205,19 +185,6 @@ Tracks COID changes over time for HealthTrust members.
 
 ---
 
-### `member_group`
-Stores multi-value group affiliations. One row per group per member.
-
-| Column | Type | Description |
-|---|---|---|
-| id | INT | Primary key |
-| member_id | INT | FK → member |
-| group_name | VARCHAR | Group affiliation name |
-
-**Used by:** Vizient (Vizient Group 1, Group 2, Group 3)
-
----
-
 ### `member_program`
 Stores named program enrollments with start and end dates. One row per program per member.
 
@@ -230,6 +197,19 @@ Stores named program enrollments with start and end dates. One row per program p
 | end_date | DATE | Program end date |
 
 **Used by:** Premier only
+
+---
+
+### `member_group`
+Stores multi-value group affiliations. One row per group per member.
+
+| Column | Type | Description |
+|---|---|---|
+| id | INT | Primary key |
+| member_id | INT | FK → member |
+| group_name | VARCHAR | Group affiliation name |
+
+**Used by:** Vizient (Vizient Group 1, Group 2, Group 3)
 
 ---
 
@@ -250,7 +230,7 @@ Stores aggregation affiliations with date ranges. One row per affiliation per me
 
 ## Source Column Mapping Summary
 
-### HealthTrust → Schema
+### HealthTrust → Schema (17 columns)
 
 | Source Column | Schema Table | Schema Column |
 |---|---|---|
@@ -272,42 +252,59 @@ Stores aggregation affiliations with date ranges. One row per affiliation per me
 | Member Status | member | member_status |
 | Comments | member | comments |
 
-### Premier → Schema
+### Premier → Schema (24 columns)
 
 | Source Column | Schema Table | Schema Column |
 |---|---|---|
 | Address ID | member | native_member_id |
 | GPO ID | member | premier_gpo_id |
-| Name 1, Name 2 | member | name1, name2 |
+| Membership Start Date | member | membership_eligible_date |
+| Name 1 | member | name1 |
+| Name 2 | member | name2 |
 | Override Name | member | override_name |
 | Address Type | member | address_type |
-| Address 1/2/3, City, State/Province, Postal Code | member | address fields |
-| Top Parent GPO ID | member | top_parent_id (FK) |
-| Direct Parent GPO ID | member | direct_parent_id (FK) |
+| Address 1 | member | address1 |
+| Address 2 | member | address2 |
+| Address 3 | member | address3 |
+| City | member | city |
+| State/Province | member | state |
+| Postal Code | member | postal_code |
+| Country | member | country |
 | Relationship to Top Parent | member | relationship_to_top_parent |
 | Relationship to Direct Parent | member | relationship_to_direct_parent |
+| Direct Parent GPO ID | member | direct_parent_id (FK) |
+| Direct Parent Name 1 | *(on direct parent row)* | — |
+| Top Parent GPO ID | member | top_parent_id (FK) |
+| Top Parent Name 1 | *(on top parent row)* | — |
 | Member Status | member | member_status |
-| Membership Start Date | member | membership_eligible_date |
 | Committed Program Eligibility | member | committed_program_eligibility |
 | AscenDrive Start/End Date | member_program | program_name='AscenDrive', start_date, end_date |
 | KIINDO Start/End Date | member_program | program_name='KIINDO', start_date, end_date |
 | SURPASS Start/End Date | member_program | program_name='SURPASS', start_date, end_date |
 | Aggregation Affiliation 1/2/3 + Start/End Dates | member_affiliation | affiliation, start_date, end_date |
 
-### Vizient → Schema
+### Vizient → Schema (18 columns)
 
 | Source Column | Schema Table | Schema Column |
 |---|---|---|
 | LIC | member | native_member_id |
 | Member ID | member | vizient_member_id |
-| Member Name | member | name1 |
 | Member Date | member | membership_eligible_date |
-| Address1/2, City, State, Zip Code | member | address fields |
+| Member Name | member | name1 |
+| Address1 | member | address1 |
+| Address2 | member | address2 |
+| City | member | city |
+| State | member | state |
+| Zip Code | member | postal_code |
 | System ID | member | top_parent_id (FK) |
+| System Name | *(on top parent row)* | — |
 | Parent ID | member | direct_parent_id (FK) |
+| Parent Name | *(on direct parent row)* | — |
 | Supply Program | member | supply_program |
 | AMC Tier Pricing | member | amc_tier_pricing |
-| Vizient Group 1/2/3 | member_group | group_name |
+| Vizient Group 1 | member_group | group_name |
+| Vizient Group 2 | member_group | group_name |
+| Vizient Group 3 | member_group | group_name |
 
 ---
 
@@ -329,11 +326,13 @@ erDiagram
         varchar name1
         varchar member_status
         date membership_eligible_date
+        text comments
     }
     member_dea {
         int id PK
         int member_id FK
         varchar dea_number
+        varchar dea_registrant_name
     }
     member_contact {
         int id PK
@@ -346,6 +345,13 @@ erDiagram
         int member_id FK
         varchar prior_coid
         varchar current_coid
+    }
+    member_program {
+        int id PK
+        int member_id FK
+        varchar program_name
+        date start_date
+        date end_date
     }
     member_group {
         int id PK
@@ -363,12 +369,26 @@ erDiagram
     gpo_entity ||--o{ member : "has members"
     member ||--o{ member : "top_parent_id"
     member ||--o{ member : "direct_parent_id"
-    member ||--o{ member_dea : "DEA numbers"
-    member ||--o{ member_contact : "contacts"
-    member ||--o{ member_coid_history : "COID history"
-    member ||--o{ member_group : "group affiliations"
-    member ||--o{ member_affiliation : "aggregation affiliations"
+    member ||--o{ member_dea          : "DEA numbers (HT)"
+    member ||--o{ member_contact      : "contacts (HT)"
+    member ||--o{ member_coid_history : "COID history (HT)"
+    member ||--o{ member_program      : "programs (Premier)"
+    member ||--o{ member_group        : "group affiliations (Vizient)"
+    member ||--o{ member_affiliation  : "aggregation affiliations (Premier)"
 ```
+
+---
+
+## Child Tables by GPO
+
+| Table | HealthTrust | Premier | Vizient |
+|---|---|---|---|
+| member_dea | DEA Number / DEA Name | — | — |
+| member_contact | Director of Pharmacy, Material Manager | — | — |
+| member_coid_history | Prior COID → COID transitions | — | — |
+| member_program | — | AscenDrive, KIINDO, SURPASS | — |
+| member_group | — | — | Vizient Group 1/2/3 |
+| member_affiliation | — | Aggregation Affiliation 1/2/3 | — |
 
 ---
 
