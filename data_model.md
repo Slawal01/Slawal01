@@ -88,9 +88,6 @@ erDiagram
     gpo_entity ||--o{ member : "has"
     member ||--o{ member : "top_parent_id (self-ref)"
     member ||--o{ member : "direct_parent_id (self-ref)"
-    member ||--o{ member_dea          : "DEA numbers (HT)"
-    member ||--o{ member_contact      : "contacts (HT)"
-    member ||--o{ member_coid_history : "COID history (HT)"
     member ||--o{ member_program      : "programs (Premier)"
     member ||--o{ member_group        : "group affiliations (Vizient)"
     member ||--o{ member_affiliation  : "aggregation affiliations (Premier)"
@@ -175,9 +172,6 @@ erDiagram
 
 | Table | HealthTrust | Premier | Vizient |
 |---|---|---|---|
-| member_dea | DEA Number / DEA Name | — | — |
-| member_contact | Director of Pharmacy, Material Manager | — | — |
-| member_coid_history | Prior COID → COID | — | — |
 | member_program | — | AscenDrive, KIINDO, SURPASS | — |
 | member_group | — | — | Vizient Group 1/2/3 |
 | member_affiliation | — | Aggregation Affiliation 1/2/3 | — |

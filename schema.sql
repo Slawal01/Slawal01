@@ -17,8 +17,8 @@ INSERT INTO gpo_entity (code, name) VALUES
 -- ============================================================
 -- MEMBER
 -- One row per unique member per GPO (keyed by native_member_id)
--- HealthTrust  native_member_id = GPOID
--- Premier      native_member_id = GPO ID
+-- HealthTrust  native_member_id = GPOID  (deduplicate on GPOID before load)
+-- Premier      native_member_id = Address ID
 -- Vizient      native_member_id = LIC (business-facing identifier)
 -- ============================================================
 CREATE TABLE member (
@@ -27,16 +27,14 @@ CREATE TABLE member (
 
     -- Natural / cross-GPO keys
     native_member_id                VARCHAR(50)  NOT NULL,  -- GPOID (HT) / Address ID (Premier) / LIC (Vizient)
-    current_coid                    VARCHAR(20),             -- Current COID (HealthTrust only)
-    ccn                             VARCHAR(20),             -- CMS Certification Number (HealthTrust)
-    premier_gpo_id                  VARCHAR(50),             -- Premier GPO ID (account-level, alongside Address ID)
+    premier_gpo_id                  VARCHAR(50),             -- Premier GPO ID (secondary to Address ID)
     vizient_member_id               VARCHAR(50),             -- Vizient numeric Member ID (secondary to LIC)
 
     -- Name & address
     name1                           VARCHAR(200) NOT NULL,
     name2                           VARCHAR(200),
-    override_name                   VARCHAR(200),            -- Premier Override Name
-    address_type                    VARCHAR(50),
+    override_name                   VARCHAR(200),            -- Premier
+    address_type                    VARCHAR(50),             -- Premier
     address1                        VARCHAR(200),
     address2                        VARCHAR(200),
     address3                        VARCHAR(200),
@@ -44,8 +42,6 @@ CREATE TABLE member (
     state                           VARCHAR(10),
     postal_code                     VARCHAR(20),
     country                         VARCHAR(50),
-    phone                           VARCHAR(30),
-    fax                             VARCHAR(30),
 
     -- Hierarchy (3-level max across all GPOs)
     -- Root node: top_parent_id = direct_parent_id = self.id
@@ -53,111 +49,25 @@ CREATE TABLE member (
     -- 3-level:   top_parent_id != direct_parent_id != self.id
     top_parent_id                   INT          REFERENCES member(id),
     direct_parent_id                INT          REFERENCES member(id),
-    relationship_to_gpo             VARCHAR(100),            -- HealthTrust
     relationship_to_top_parent      VARCHAR(100),            -- Premier
-    relationship_to_direct_parent   VARCHAR(100),            -- Premier & HealthTrust
-    parent_relationship_type        VARCHAR(100),            -- Owned / Joint Venture / Managed / etc.
+    relationship_to_direct_parent   VARCHAR(100),            -- Premier
 
     -- Membership status
     member_status                   VARCHAR(50),
     membership_eligible_date        DATE,                    -- HT: Membership Eligible Date / Premier: Membership Start Date / Vizient: Member Date
-    membership_ineligible_date      DATE,                    -- HT: Membership Ineligible Date
-    org_status                      VARCHAR(50),
     committed_program_eligibility   VARCHAR(200),            -- Premier
 
-    -- Class of trade & classification
-    class_of_trade                  VARCHAR(100),            -- HealthTrust
-    facility_type                   VARCHAR(100),            -- HealthTrust
-    specialty                       VARCHAR(100),            -- HealthTrust
-    investor_org                    VARCHAR(100),            -- HealthTrust
-    company_name                    VARCHAR(200),            -- HealthTrust
-    group_name                      VARCHAR(200),            -- HealthTrust
-    division                        VARCHAR(200),            -- HealthTrust
-    market                          VARCHAR(100),            -- HealthTrust
-    licensed_beds                   INT,                     -- HealthTrust
-
-    -- Pharmacy (HealthTrust only)
-    pharmacy_eligible_date          DATE,
-    pharmacy_ineligible_date        DATE,
-    non_pharmacy_eligible_date      DATE,
-    non_pharmacy_ineligible_date    DATE,
-
-    -- HRSA / DSH (340B) (HealthTrust only)
-    hrsa_flag                       BOOLEAN,
-    hrsa_number                     VARCHAR(50),
-    hrsa_eligible_date              DATE,
-    hrsa_ineligible_date            DATE,
-    dsh_flag                        BOOLEAN,
-    advantage_trust_flag            BOOLEAN,
-
     -- Vizient-specific
-    supply_program                  VARCHAR(100),            -- Vizient: Supply Program
-    amc_tier_pricing                VARCHAR(100),            -- Vizient: AMC Tier Pricing
+    supply_program                  VARCHAR(100),
+    amc_tier_pricing                VARCHAR(100),
 
-    comments                        TEXT,                    -- HealthTrust
+    -- HealthTrust-specific
+    comments                        TEXT,
 
     created_at                      TIMESTAMP    NOT NULL DEFAULT NOW(),
     updated_at                      TIMESTAMP    NOT NULL DEFAULT NOW(),
 
     CONSTRAINT uq_member_gpo_native UNIQUE (gpo_entity_id, native_member_id)
-);
-
--- ============================================================
--- MEMBER DEA
--- One row per DEA number per member
--- Used by: HealthTrust only (root cause of duplicate rows in HT source data)
--- ============================================================
-CREATE TABLE member_dea (
-    id                      SERIAL PRIMARY KEY,
-    member_id               INT          NOT NULL REFERENCES member(id) ON DELETE CASCADE,
-    dea_number              VARCHAR(20)  NOT NULL,
-    dea_registrant_name     VARCHAR(200),
-
-    CONSTRAINT uq_member_dea UNIQUE (member_id, dea_number)
-);
-
--- ============================================================
--- MEMBER CONTACT
--- One row per contact type per member
--- HealthTrust: 'Director of Pharmacy', 'Material Manager'
--- ============================================================
-CREATE TABLE member_contact (
-    id              SERIAL PRIMARY KEY,
-    member_id       INT          NOT NULL REFERENCES member(id) ON DELETE CASCADE,
-    contact_type    VARCHAR(100) NOT NULL,
-    contact_name    VARCHAR(200),
-    phone           VARCHAR(30),
-    fax             VARCHAR(30),
-    email           VARCHAR(200),
-
-    CONSTRAINT uq_member_contact UNIQUE (member_id, contact_type)
-);
-
--- ============================================================
--- MEMBER COID HISTORY  (HealthTrust only)
--- Tracks Prior COID -> COID transitions
--- COID is NOT unique; GPOID is the stable key
--- ============================================================
-CREATE TABLE member_coid_history (
-    id              SERIAL PRIMARY KEY,
-    member_id       INT          NOT NULL REFERENCES member(id) ON DELETE CASCADE,
-    prior_coid      VARCHAR(20),
-    current_coid    VARCHAR(20)  NOT NULL,
-    effective_date  DATE,
-    recorded_at     TIMESTAMP    NOT NULL DEFAULT NOW()
-);
-
--- ============================================================
--- MEMBER GROUP
--- Multi-value group affiliations
--- Vizient: Vizient Group 1, Group 2, Group 3
--- ============================================================
-CREATE TABLE member_group (
-    id              SERIAL PRIMARY KEY,
-    member_id       INT          NOT NULL REFERENCES member(id) ON DELETE CASCADE,
-    group_name      VARCHAR(200) NOT NULL,
-
-    CONSTRAINT uq_member_group UNIQUE (member_id, group_name)
 );
 
 -- ============================================================
@@ -173,6 +83,19 @@ CREATE TABLE member_program (
     end_date        DATE,
 
     CONSTRAINT uq_member_program UNIQUE (member_id, program_name)
+);
+
+-- ============================================================
+-- MEMBER GROUP
+-- Multi-value group affiliations
+-- Vizient: Vizient Group 1, Group 2, Group 3
+-- ============================================================
+CREATE TABLE member_group (
+    id              SERIAL PRIMARY KEY,
+    member_id       INT          NOT NULL REFERENCES member(id) ON DELETE CASCADE,
+    group_name      VARCHAR(200) NOT NULL,
+
+    CONSTRAINT uq_member_group UNIQUE (member_id, group_name)
 );
 
 -- ============================================================
@@ -194,15 +117,10 @@ CREATE TABLE member_affiliation (
 -- INDEXES
 -- ============================================================
 CREATE INDEX idx_member_gpo             ON member (gpo_entity_id);
-CREATE INDEX idx_member_gln             ON member (gln);
-CREATE INDEX idx_member_hin             ON member (hin);
-CREATE INDEX idx_member_coid            ON member (current_coid);
 CREATE INDEX idx_member_top_parent      ON member (top_parent_id);
 CREATE INDEX idx_member_direct_parent   ON member (direct_parent_id);
-CREATE INDEX idx_member_dea_number      ON member_dea (dea_number);
-CREATE INDEX idx_member_coid_hist       ON member_coid_history (member_id);
-CREATE INDEX idx_member_group           ON member_group (member_id);
 CREATE INDEX idx_member_program         ON member_program (member_id);
+CREATE INDEX idx_member_group           ON member_group (member_id);
 CREATE INDEX idx_member_affiliation     ON member_affiliation (member_id);
 
 -- ============================================================
@@ -212,11 +130,6 @@ CREATE INDEX idx_member_affiliation     ON member_affiliation (member_id);
 --   Top Parent    : top_parent_id = direct_parent_id = self.id
 --   Direct Parent : top_parent_id = direct_parent_id != self.id
 --   Member        : top_parent_id != direct_parent_id
---
--- Load order must follow this hierarchy:
---   Pass 1 → Top Parents  (no parent reference needed)
---   Pass 2 → Direct Parents (top parent already loaded)
---   Pass 3 → Leaf Members   (both parents already loaded)
 -- ============================================================
 CREATE VIEW v_member_hierarchy AS
 SELECT
@@ -241,15 +154,7 @@ SELECT
 FROM member m
 JOIN gpo_entity g ON g.id = m.gpo_entity_id;
 
-
--- ============================================================
--- HIERARCHY LOAD QUERIES
--- Use these to extract rows in correct load order per GPO
--- Replace :gpo_code with 'HEALTHTRUST', 'PREMIER', or 'VIZIENT'
--- ============================================================
-
 -- Pass 1: Top Parents
--- (top_parent native_member_id = direct_parent native_member_id = own native_member_id)
 -- SELECT * FROM v_member_hierarchy WHERE hierarchy_level = 'Top Parent' AND gpo_code = :gpo_code;
 
 -- Pass 2: Direct Parents

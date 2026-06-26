@@ -25,8 +25,7 @@ GPO member data is used to track healthcare facility memberships, hierarchy rela
 | **One member table for all GPOs** | Members from all three GPOs live in the same `member` table, distinguished by `gpo_entity_id` |
 | **Unique key per GPO** | `UNIQUE(gpo_entity_id, native_member_id)` prevents duplicate members within each GPO |
 | **Self-referencing hierarchy** | Top Parents, Direct Parents, and Members are all rows in the same `member` table — parents reference themselves |
-| **HealthTrust deduplication** | Source data has one row per DEA number per member. Rows must be deduplicated on GPOID before loading into the `member` table |
-| **COID is not unique (HealthTrust)** | COID changes over time. GPOID is the stable key |
+| **HealthTrust deduplication** | Source data has one row per DEA number per member. Rows are deduplicated on GPOID during ETL — DEA data is not loaded into the schema |
 
 ---
 
@@ -83,7 +82,7 @@ Because parent rows must exist before child rows can reference them, data must b
 | **Pass 1** | Top Parents | `top_parent_id = direct_parent_id = own ID` |
 | **Pass 2** | Direct Parents | `top_parent_id = direct_parent_id ≠ own ID` |
 | **Pass 3** | Leaf Members | `top_parent_id ≠ direct_parent_id` |
-| **Pass 4** | Child records | DEA numbers (HT), programs (Premier), groups (Vizient), affiliations (Premier) |
+| **Pass 4** | Child records | Programs (Premier), groups (Vizient), affiliations (Premier) |
 
 ---
 
@@ -131,57 +130,6 @@ Core table. One row per unique member per GPO after deduplication.
 | supply_program | VARCHAR | Vizient | Supply program name |
 | amc_tier_pricing | VARCHAR | Vizient | Academic Medical Center tier pricing |
 | comments | TEXT | HealthTrust | Free-text comments |
-
----
-
-### `member_dea`
-Stores DEA registrations. One row per DEA number per member.
-
-> **Note:** HealthTrust source data contains one row per DEA number per member, causing apparent duplicates. Rows must be deduplicated on GPOID before loading. DEA numbers are stored here for reference.
-
-| Column | Type | Description |
-|---|---|---|
-| id | INT | Primary key |
-| member_id | INT | FK → member |
-| dea_number | VARCHAR | DEA registration number |
-| dea_registrant_name | VARCHAR | Name on DEA registration |
-
-**Used by:** HealthTrust only
-
----
-
-### `member_contact`
-Stores named contacts for a member. One row per contact type per member.
-
-| Column | Type | Description |
-|---|---|---|
-| id | INT | Primary key |
-| member_id | INT | FK → member |
-| contact_type | VARCHAR | 'Director of Pharmacy', 'Material Manager' |
-| contact_name | VARCHAR | Full name |
-| phone | VARCHAR | Phone number |
-| fax | VARCHAR | Fax number |
-| email | VARCHAR | Email address |
-
-**Used by:** HealthTrust only
-
----
-
-### `member_coid_history`
-Tracks COID changes over time for HealthTrust members.
-
-> **Note:** COID is not a stable unique identifier — it can change over time. GPOID is the stable key. This table preserves the audit trail of Prior COID → current COID transitions.
-
-| Column | Type | Description |
-|---|---|---|
-| id | INT | Primary key |
-| member_id | INT | FK → member |
-| prior_coid | VARCHAR | Previous COID value |
-| current_coid | VARCHAR | New COID value |
-| effective_date | DATE | Date of transition (if known) |
-| recorded_at | TIMESTAMP | When this record was created |
-
-**Used by:** HealthTrust only
 
 ---
 
@@ -369,9 +317,6 @@ erDiagram
     gpo_entity ||--o{ member : "has members"
     member ||--o{ member : "top_parent_id"
     member ||--o{ member : "direct_parent_id"
-    member ||--o{ member_dea          : "DEA numbers (HT)"
-    member ||--o{ member_contact      : "contacts (HT)"
-    member ||--o{ member_coid_history : "COID history (HT)"
     member ||--o{ member_program      : "programs (Premier)"
     member ||--o{ member_group        : "group affiliations (Vizient)"
     member ||--o{ member_affiliation  : "aggregation affiliations (Premier)"
@@ -383,9 +328,6 @@ erDiagram
 
 | Table | HealthTrust | Premier | Vizient |
 |---|---|---|---|
-| member_dea | DEA Number / DEA Name | — | — |
-| member_contact | Director of Pharmacy, Material Manager | — | — |
-| member_coid_history | Prior COID → COID transitions | — | — |
 | member_program | — | AscenDrive, KIINDO, SURPASS | — |
 | member_group | — | — | Vizient Group 1/2/3 |
 | member_affiliation | — | Aggregation Affiliation 1/2/3 | — |
