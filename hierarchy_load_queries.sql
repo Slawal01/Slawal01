@@ -48,15 +48,10 @@ SELECT
     "City"                          AS city,
     "State/Province"                AS state,
     "Postal Code"                   AS postal_code,
-    "Top Parent GPOID"              AS top_parent_id,
     "Direct Parent GPOID"           AS direct_parent_id,
-    "Member Status"                 AS member_status,
+    "Top Parent GPOID"              AS top_parent_id,
     "Membership Eligible Date"      AS membership_eligible_date,
-    "Company Name"                  AS company_name,
-    "Group"                         AS group_name,
-    "Licensed Beds"                 AS licensed_beds,
-    "Class of Trade"                AS class_of_trade,
-    "Facility Type"                 AS facility_type,
+    "Member Status"                 AS member_status,
     "Comments"                      AS comments,
     'Member'                        AS hierarchy_level
 FROM healthtrust_source

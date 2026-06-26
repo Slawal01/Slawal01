@@ -255,26 +255,21 @@ Stores aggregation affiliations with date ranges. One row per affiliation per me
 | Source Column | Schema Table | Schema Column |
 |---|---|---|
 | GPOID | member | native_member_id |
-| COID | member | current_coid |
-| Prior COID | member_coid_history | prior_coid / current_coid |
-| Name1, Name2 | member | name1, name2 |
-| Address1/2/3, City, State, Postal Code | member | address1–3, city, state, postal_code |
-| Phone, Fax | member | phone, fax |
-| Top Parent GPOID | member | top_parent_id (FK) |
-| Direct Parent GPOID | member | direct_parent_id (FK) |
-| Member Status | member | member_status |
 | Membership Eligible Date | member | membership_eligible_date |
-| Class of Trade | member | class_of_trade |
-| Facility Type | member | facility_type |
-| Licensed Beds | member | licensed_beds |
-| Company Name | member | company_name |
-| Group | member | group_name |
-| HRSA (flag) | member | hrsa_flag |
-| HRSA Number | member | hrsa_number |
-| DSH Flag | member | dsh_flag |
-| DEA Number, DEA Name | member_dea | dea_number, dea_registrant_name |
-| Director of Pharmacy / Phone / Fax | member_contact | contact_name / phone / fax |
-| Material Manager / Phone / Fax | member_contact | contact_name / phone / fax |
+| Name1 | member | name1 |
+| Name2 | member | name2 |
+| Address1 | member | address1 |
+| Address2 | member | address2 |
+| Address3 | member | address3 |
+| City | member | city |
+| State/Province | member | state |
+| Postal Code | member | postal_code |
+| Direct Parent GPOID | member | direct_parent_id (FK) |
+| Direct Parent Name1 | *(on direct parent row)* | — |
+| Top Parent GPOID | member | top_parent_id (FK) |
+| Top Parent Name 1 | *(on top parent row)* | — |
+| Member Status | member | member_status |
+| Comments | member | comments |
 
 ### Premier → Schema
 
