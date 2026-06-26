@@ -131,7 +131,7 @@ erDiagram
 |---|---|---|
 | HealthTrust | GPOID | Yes (after dedup) |
 | Premier | Address ID | Yes |
-| Vizient | Member ID | Yes (no dedup needed) |
+| Vizient | LIC | Yes (business-facing identifier) |
 
 ## Child Tables by GPO
 

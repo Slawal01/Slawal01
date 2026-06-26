@@ -19,13 +19,14 @@ INSERT INTO gpo_entity (code, name) VALUES
 -- One row per unique member per GPO (keyed by native_member_id)
 -- HealthTrust native_member_id = GPOID
 -- Premier      native_member_id = Address ID
+-- Vizient      native_member_id = LIC (business-facing identifier)
 -- ============================================================
 CREATE TABLE member (
     id                          SERIAL PRIMARY KEY,
     gpo_entity_id               INT          NOT NULL REFERENCES gpo_entity(id),
 
     -- Natural / cross-GPO keys
-    native_member_id            VARCHAR(50)  NOT NULL,  -- GPOID (HT) / Address ID (Premier)
+    native_member_id            VARCHAR(50)  NOT NULL,  -- GPOID (HT) / Address ID (Premier) / LIC (Vizient)
     gln                         VARCHAR(20),             -- Global Location Number
     hin                         VARCHAR(20),             -- Health Industry Number
     current_coid                VARCHAR(20),             -- Current COID (HealthTrust only)
