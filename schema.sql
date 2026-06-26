@@ -188,3 +188,56 @@ CREATE INDEX idx_member_dea_number      ON member_dea (dea_number);
 CREATE INDEX idx_member_coid_hist       ON member_coid_history (member_id);
 CREATE INDEX idx_member_group           ON member_group (member_id);
 CREATE INDEX idx_member_affiliation     ON member_affiliation (member_id);
+
+-- ============================================================
+-- HIERARCHY LEVEL VIEW
+-- Derives the role of each member row based on ID comparisons:
+--
+--   Top Parent    : top_parent_id = direct_parent_id = self.id
+--   Direct Parent : top_parent_id = direct_parent_id != self.id
+--   Member        : top_parent_id != direct_parent_id
+--
+-- Load order must follow this hierarchy:
+--   Pass 1 → Top Parents  (no parent reference needed)
+--   Pass 2 → Direct Parents (top parent already loaded)
+--   Pass 3 → Leaf Members   (both parents already loaded)
+-- ============================================================
+CREATE VIEW v_member_hierarchy AS
+SELECT
+    m.id,
+    m.gpo_entity_id,
+    g.code                          AS gpo_code,
+    m.native_member_id,
+    m.name1,
+    m.top_parent_id,
+    m.direct_parent_id,
+    CASE
+        WHEN m.top_parent_id = m.id
+         AND m.direct_parent_id = m.id
+        THEN 'Top Parent'
+
+        WHEN m.top_parent_id = m.direct_parent_id
+         AND m.top_parent_id != m.id
+        THEN 'Direct Parent'
+
+        ELSE 'Member'
+    END                             AS hierarchy_level
+FROM member m
+JOIN gpo_entity g ON g.id = m.gpo_entity_id;
+
+
+-- ============================================================
+-- HIERARCHY LOAD QUERIES
+-- Use these to extract rows in correct load order per GPO
+-- Replace :gpo_code with 'HEALTHTRUST', 'PREMIER', or 'VIZIENT'
+-- ============================================================
+
+-- Pass 1: Top Parents
+-- (top_parent native_member_id = direct_parent native_member_id = own native_member_id)
+-- SELECT * FROM v_member_hierarchy WHERE hierarchy_level = 'Top Parent' AND gpo_code = :gpo_code;
+
+-- Pass 2: Direct Parents
+-- SELECT * FROM v_member_hierarchy WHERE hierarchy_level = 'Direct Parent' AND gpo_code = :gpo_code;
+
+-- Pass 3: Leaf Members
+-- SELECT * FROM v_member_hierarchy WHERE hierarchy_level = 'Member' AND gpo_code = :gpo_code;
