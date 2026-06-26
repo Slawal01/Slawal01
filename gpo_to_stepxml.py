@@ -144,19 +144,27 @@ VIZIENT_MAP = {
 
 GPO_CONFIGS = {
     "healthtrust": {
-        "code":         "HEALTHTRUST",
-        "column_map":   HEALTHTRUST_MAP,
-        "id_prefix":    "HT_",
+        "code":             "HEALTHTRUST",
+        "column_map":       HEALTHTRUST_MAP,
+        "id_prefix":        "HT_",
+        # GPOID is used for both native ID and hierarchy comparisons
+        "hierarchy_id_field": "native_member_id",
     },
     "premier": {
-        "code":         "PREMIER",
-        "column_map":   PREMIER_MAP,
-        "id_prefix":    "PR_",
+        "code":             "PREMIER",
+        "column_map":       PREMIER_MAP,
+        "id_prefix":        "PR_",
+        # Hierarchy compares GPO ID (premier_gpo_id) against Top/Direct Parent GPO ID
+        # native_member_id = Address ID lives in a different ID space
+        "hierarchy_id_field": "premier_gpo_id",
     },
     "vizient": {
-        "code":         "VIZIENT",
-        "column_map":   VIZIENT_MAP,
-        "id_prefix":    "VZ_",
+        "code":             "VIZIENT",
+        "column_map":       VIZIENT_MAP,
+        "id_prefix":        "VZ_",
+        # Hierarchy compares Member ID (vizient_member_id) against System ID / Parent ID
+        # native_member_id = LIC lives in a different ID space
+        "hierarchy_id_field": "vizient_member_id",
     },
 }
 
@@ -199,8 +207,9 @@ def build_stepxml(df, gpo_key):
     Build a STEPXML ElementTree from a deduplicated DataFrame.
     Processes in 3 passes: Top Parents → Direct Parents → Members.
     """
-    cfg     = GPO_CONFIGS[gpo_key]
-    prefix  = cfg["id_prefix"]
+    cfg        = GPO_CONFIGS[gpo_key]
+    prefix     = cfg["id_prefix"]
+    hier_field = cfg["hierarchy_id_field"]  # field in same ID space as top/direct parent IDs
 
     root = etree.Element("STEP-ProductInformation")
     root.set("WorkspaceID", STEP_CONFIG["workspace_id"])
@@ -225,10 +234,10 @@ def build_stepxml(df, gpo_key):
             _add_common_values(el, row, prefix, gpo_key)
 
     # ---- PASS 1: Top Parents ----
-    # Rule: top_parent_id = direct_parent_id = native_member_id
+    # Rule: top_parent_id = direct_parent_id = member's own hierarchy ID
     top_parents = df[
-        (df["top_parent_id"].astype(str).str.strip() == df["native_member_id"].astype(str).str.strip()) &
-        (df["direct_parent_id"].astype(str).str.strip() == df["native_member_id"].astype(str).str.strip())
+        (df["top_parent_id"].astype(str).str.strip() == df[hier_field].astype(str).str.strip()) &
+        (df["direct_parent_id"].astype(str).str.strip() == df[hier_field].astype(str).str.strip())
     ].drop_duplicates(subset=["top_parent_id"])
 
     for _, row in top_parents.iterrows():
@@ -245,10 +254,10 @@ def build_stepxml(df, gpo_key):
             emit_top_parent(step_id, str(row.get("top_parent_name", "")).strip())
 
     # ---- PASS 2: Direct Parents ----
-    # Rule: top_parent_id = direct_parent_id != native_member_id
+    # Rule: top_parent_id = direct_parent_id != member's own hierarchy ID
     direct_parents = df[
         (df["top_parent_id"].astype(str).str.strip() == df["direct_parent_id"].astype(str).str.strip()) &
-        (df["top_parent_id"].astype(str).str.strip() != df["native_member_id"].astype(str).str.strip())
+        (df["top_parent_id"].astype(str).str.strip() != df[hier_field].astype(str).str.strip())
     ].drop_duplicates(subset=["direct_parent_id"])
 
     for _, row in direct_parents.iterrows():
@@ -271,8 +280,8 @@ def build_stepxml(df, gpo_key):
 
     # ---- PASS 3: Members ----
     # Includes two sub-cases:
-    #   a) direct_parent_id = native_member_id, top_parent_id != self  → 2-level: parent under top
-    #   b) top_parent_id != direct_parent_id != self                   → 3-level: parent under direct
+    #   a) direct_parent_id = own hierarchy ID, top ≠ self  → 2-level: parent under top
+    #   b) top_parent_id != direct_parent_id != self        → 3-level: parent under direct
     members = df[
         df["top_parent_id"].astype(str).str.strip() != df["direct_parent_id"].astype(str).str.strip()
     ]
@@ -281,7 +290,7 @@ def build_stepxml(df, gpo_key):
         step_id = make_step_id(prefix, row["native_member_id"])
 
         # 2-level: member references itself as direct parent → sit under top parent
-        if row["direct_parent_id"] == row["native_member_id"]:
+        if str(row["direct_parent_id"]).strip() == str(row[hier_field]).strip():
             parent_step_id = make_step_id(prefix, row["top_parent_id"])
         else:
             parent_step_id = make_step_id(prefix, row["direct_parent_id"])
