@@ -100,8 +100,9 @@ erDiagram
 | Condition | Member Role |
 |---|---|
 | `top_parent_id = direct_parent_id = self.id` | **Top Parent** (root node) |
-| `top_parent_id = direct_parent_id != self.id` | **Direct child of top** (2-level) |
-| `top_parent_id != direct_parent_id != self.id` | **Leaf Member** (3-level) |
+| `top_parent_id = direct_parent_id != self.id` | **Direct Parent** (2-level mid-node) |
+| `direct_parent_id = self.id, top_parent_id != self.id` | **2-level Member** (direct child of top) |
+| `top_parent_id != direct_parent_id != self.id` | **3-level Leaf Member** |
 
 ---
 

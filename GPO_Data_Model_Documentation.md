@@ -57,11 +57,14 @@ The hierarchy is stored using two self-referencing foreign keys on the `member` 
 
 ### Hierarchy Level Detection Rule
 
-| Condition | Member Role |
-|---|---|
-| `top_parent_id = direct_parent_id = self.id` | **Top Parent** (root node) |
-| `top_parent_id = direct_parent_id ≠ self.id` | **Direct Parent** (2-level child) |
-| `top_parent_id ≠ direct_parent_id` | **Leaf Member** (3-level) |
+| Condition | Member Role | Parent in STEPXML |
+|---|---|---|
+| `top_parent_id = direct_parent_id = self.id` | **Top Parent** (root node) | GPO_ROOT |
+| `top_parent_id = direct_parent_id ≠ self.id` | **Direct Parent** (2-level mid-node) | top_parent |
+| `direct_parent_id = self.id, top_parent_id ≠ self.id` | **2-level Member** (direct child of top) | top_parent |
+| `top_parent_id ≠ direct_parent_id ≠ self.id` | **3-level Leaf Member** | direct_parent |
+
+> **HealthTrust note:** When a member's `Direct Parent GPOID` equals its own `GPOID`, it sits directly under the Top Parent. No separate direct parent node is created.
 
 ### Hierarchy Terminology by GPO
 

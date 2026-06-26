@@ -269,15 +269,22 @@ def build_stepxml(df, gpo_key):
 
         _add_common_values(el, row, prefix, gpo_key)
 
-    # ---- PASS 3: Leaf Members ----
-    # Rule: top_parent_id != direct_parent_id
+    # ---- PASS 3: Members ----
+    # Includes two sub-cases:
+    #   a) direct_parent_id = native_member_id, top_parent_id != self  → 2-level: parent under top
+    #   b) top_parent_id != direct_parent_id != self                   → 3-level: parent under direct
     members = df[
         df["top_parent_id"].astype(str).str.strip() != df["direct_parent_id"].astype(str).str.strip()
     ]
 
     for _, row in members.iterrows():
-        step_id        = make_step_id(prefix, row["native_member_id"])
-        parent_step_id = make_step_id(prefix, row["direct_parent_id"])
+        step_id = make_step_id(prefix, row["native_member_id"])
+
+        # 2-level: member references itself as direct parent → sit under top parent
+        if row["direct_parent_id"] == row["native_member_id"]:
+            parent_step_id = make_step_id(prefix, row["top_parent_id"])
+        else:
+            parent_step_id = make_step_id(prefix, row["direct_parent_id"])
 
         el = etree.SubElement(products_el, "Product")
         el.set("ID",         step_id)
