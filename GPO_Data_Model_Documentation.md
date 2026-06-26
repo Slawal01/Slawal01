@@ -264,6 +264,7 @@ Stores aggregation affiliations with date ranges. One row per affiliation per me
 | City | member | city |
 | State/Province | member | state |
 | Postal Code | member | postal_code |
+| Country | member | country |
 | Direct Parent GPOID | member | direct_parent_id (FK) |
 | Direct Parent Name1 | *(on direct parent row)* | — |
 | Top Parent GPOID | member | top_parent_id (FK) |

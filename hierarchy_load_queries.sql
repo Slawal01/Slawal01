@@ -48,6 +48,7 @@ SELECT
     "City"                          AS city,
     "State/Province"                AS state,
     "Postal Code"                   AS postal_code,
+    "Country"                       AS country,
     "Direct Parent GPOID"           AS direct_parent_id,
     "Top Parent GPOID"              AS top_parent_id,
     "Membership Eligible Date"      AS membership_eligible_date,
