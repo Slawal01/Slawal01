@@ -105,7 +105,7 @@ CREATE TABLE member (
 -- ============================================================
 -- MEMBER DEA
 -- One row per DEA number per member
--- Used by: HealthTrust (root cause of duplicate rows), Premier
+-- Used by: HealthTrust only (root cause of duplicate rows in HT source data)
 -- ============================================================
 CREATE TABLE member_dea (
     id                      SERIAL PRIMARY KEY,

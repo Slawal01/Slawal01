@@ -166,7 +166,7 @@ Stores DEA registrations. One row per DEA number per member.
 | dea_number | VARCHAR | DEA registration number |
 | dea_registrant_name | VARCHAR | Name on DEA registration |
 
-**Used by:** HealthTrust, Premier
+**Used by:** HealthTrust only
 
 ---
 
@@ -293,7 +293,6 @@ Stores aggregation affiliations with date ranges. One row per affiliation per me
 | Member Status | member | member_status |
 | Membership Start Date | member | membership_eligible_date |
 | Committed Program Eligibility | member | committed_program_eligibility |
-| DEA # | member_dea | dea_number |
 | AscenDrive Start/End Date | member_program | program_name='AscenDrive', start_date, end_date |
 | KIINDO Start/End Date | member_program | program_name='KIINDO', start_date, end_date |
 | SURPASS Start/End Date | member_program | program_name='SURPASS', start_date, end_date |
