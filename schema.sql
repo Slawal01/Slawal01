@@ -27,12 +27,10 @@ CREATE TABLE member (
 
     -- Natural / cross-GPO keys
     native_member_id                VARCHAR(50)  NOT NULL,  -- GPOID (HT) / Address ID (Premier) / LIC (Vizient)
-    gln                             VARCHAR(20),             -- Global Location Number
-    hin                             VARCHAR(20),             -- Health Industry Number
     current_coid                    VARCHAR(20),             -- Current COID (HealthTrust only)
-    ccn                             VARCHAR(20),             -- CMS Certification Number
-    lic                             VARCHAR(20),             -- Vizient LIC code
+    ccn                             VARCHAR(20),             -- CMS Certification Number (HealthTrust)
     premier_gpo_id                  VARCHAR(50),             -- Premier GPO ID (account-level, alongside Address ID)
+    vizient_member_id               VARCHAR(50),             -- Vizient numeric Member ID (secondary to LIC)
 
     -- Name & address
     name1                           VARCHAR(200) NOT NULL,
@@ -68,46 +66,35 @@ CREATE TABLE member (
     committed_program_eligibility   VARCHAR(200),            -- Premier
 
     -- Class of trade & classification
-    class_of_trade                  VARCHAR(100),
-    facility_type                   VARCHAR(100),
-    facility_category               VARCHAR(100),            -- Vizient
-    specialty                       VARCHAR(100),
-    investor_org                    VARCHAR(100),
-    company_name                    VARCHAR(200),
-    group_name                      VARCHAR(200),
-    division                        VARCHAR(200),
-    market                          VARCHAR(100),
-    licensed_beds                   INT,
+    class_of_trade                  VARCHAR(100),            -- HealthTrust
+    facility_type                   VARCHAR(100),            -- HealthTrust
+    specialty                       VARCHAR(100),            -- HealthTrust
+    investor_org                    VARCHAR(100),            -- HealthTrust
+    company_name                    VARCHAR(200),            -- HealthTrust
+    group_name                      VARCHAR(200),            -- HealthTrust
+    division                        VARCHAR(200),            -- HealthTrust
+    market                          VARCHAR(100),            -- HealthTrust
+    licensed_beds                   INT,                     -- HealthTrust
 
-    -- Pharmacy
+    -- Pharmacy (HealthTrust only)
     pharmacy_eligible_date          DATE,
     pharmacy_ineligible_date        DATE,
     non_pharmacy_eligible_date      DATE,
     non_pharmacy_ineligible_date    DATE,
 
-    -- HRSA / DSH (340B)
+    -- HRSA / DSH (340B) (HealthTrust only)
     hrsa_flag                       BOOLEAN,
     hrsa_number                     VARCHAR(50),
     hrsa_eligible_date              DATE,
     hrsa_ineligible_date            DATE,
     dsh_flag                        BOOLEAN,
-
-    -- HealthTrust flags
     advantage_trust_flag            BOOLEAN,
 
     -- Vizient-specific
-    provista_member_flag            VARCHAR(20),
-    medassets_member_flag           BOOLEAN,
-    cha_member_flag                 BOOLEAN,
-    excelerate_member_type          VARCHAR(100),
-    excelerate_date                 DATE,
-    supply_program                  VARCHAR(100),
-    rx_group                        VARCHAR(100),
-    provista_group                  VARCHAR(100),
-    amc_tier_pricing                VARCHAR(100),
-    stibo_parent_id                 VARCHAR(50),
+    supply_program                  VARCHAR(100),            -- Vizient: Supply Program
+    amc_tier_pricing                VARCHAR(100),            -- Vizient: AMC Tier Pricing
 
-    comments                        TEXT,
+    comments                        TEXT,                    -- HealthTrust
 
     created_at                      TIMESTAMP    NOT NULL DEFAULT NOW(),
     updated_at                      TIMESTAMP    NOT NULL DEFAULT NOW(),
@@ -133,7 +120,6 @@ CREATE TABLE member_dea (
 -- MEMBER CONTACT
 -- One row per contact type per member
 -- HealthTrust: 'Director of Pharmacy', 'Material Manager'
--- Vizient:     'Account Manager'
 -- ============================================================
 CREATE TABLE member_contact (
     id              SERIAL PRIMARY KEY,
