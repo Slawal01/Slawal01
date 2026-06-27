@@ -21,10 +21,12 @@ from datetime import datetime
 # ============================================================
 
 STEP_CONFIG = {
-    "workspace_id":  "Main",
-    "context_id":    "Content",
-    "user_type_id":  "GPO_Member",       # STEP object type for all member levels
-    "root_node_id":  "GPO_ROOT",         # Parent node in STEP where top parents sit
+    "workspace_id":       "Main",
+    "context_id":         "Content",
+    "root_node_id":       "GPOHierarchy",       # GPO Hierarchy Root node in STEP
+    "type_top_parent":    "GPO_Top_Parent",      # Object type for top parent nodes
+    "type_direct_parent": "GPO_Direct_Parent",   # Object type for direct parent nodes
+    "type_member":        "GPO_Member",          # Object type for leaf members
 }
 
 # Maps schema field → STEP Attribute ID
@@ -227,7 +229,7 @@ def build_stepxml(df, gpo_key):
         el = etree.SubElement(products_el, "Product")
         el.set("ID",         step_id)
         el.set("ParentID",   STEP_CONFIG["root_node_id"])
-        el.set("UserTypeID", STEP_CONFIG["user_type_id"])
+        el.set("UserTypeID", STEP_CONFIG["type_top_parent"])
         name_el = etree.SubElement(el, "Name")
         name_el.text = name
         if row is not None:
@@ -271,7 +273,7 @@ def build_stepxml(df, gpo_key):
         el = etree.SubElement(products_el, "Product")
         el.set("ID",         step_id)
         el.set("ParentID",   parent_step_id)
-        el.set("UserTypeID", STEP_CONFIG["user_type_id"])
+        el.set("UserTypeID", STEP_CONFIG["type_direct_parent"])
 
         name_el = etree.SubElement(el, "Name")
         name_el.text = str(row.get("direct_parent_name", "")).strip()
@@ -298,7 +300,7 @@ def build_stepxml(df, gpo_key):
         el = etree.SubElement(products_el, "Product")
         el.set("ID",         step_id)
         el.set("ParentID",   parent_step_id)
-        el.set("UserTypeID", STEP_CONFIG["user_type_id"])
+        el.set("UserTypeID", STEP_CONFIG["type_member"])
 
         name_el = etree.SubElement(el, "Name")
         name_el.text = str(row.get("name1", "")).strip()
