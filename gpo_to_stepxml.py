@@ -37,40 +37,48 @@ GPO_PARENT_NODES = {
 
 # Maps schema field → STEP Attribute ID
 ATTRIBUTE_MAP = {
-    "name2":                        "Name2",
-    "address_type":                 "AddressType",
-    "address1":                     "Address1",
-    "address2":                     "Address2",
-    "address3":                     "Address3",
-    "city":                         "City",
-    "state":                        "State",
-    "postal_code":                  "PostalCode",
-    "country":                      "Country",
-    "member_status":                "MemberStatus",
-    "membership_eligible_date":     "MembershipEligibleDate",
-    "comments":                     "Comments",
-    # Premier-specific
-    "override_name":                "OverrideName",
-    "relationship_to_top_parent":   "RelationshipToTopParent",
-    "relationship_to_direct_parent":"RelationshipToDirectParent",
-    "committed_program_eligibility":"CommittedProgramEligibility",
-    "premier_gpo_id":               "PremierGPOID",
-    # Vizient-specific
-    "vizient_member_id":            "VizientMemberID",
-    "supply_program":               "SupplyProgram",
-    "amc_tier_pricing":             "AMCTierPricing",
+    # Address — existing loc.* attributes
+    "address1":                      "loc.Address_Line_1",
+    "address2":                      "loc.Address_Line_2",
+    "address3":                      "loc.Address_Line_3",
+    "city":                          "loc.Address_City",
+    "state":                         "loc.Address_State",
+    "postal_code":                   "loc.Address_Postal_Code",
+    "country":                       "loc.Address_Country",
+    # Common — to be created in STEP
+    "name2":                         "gpo.Name_2",
+    "member_status":                 "gpo.Member_Status",
+    "membership_eligible_date":      "gpo.Membership_Eligible_Date",
+    "comments":                      "gpo.Comments",
+    # Premier-specific — to be created in STEP
+    "address_type":                  "gpo.Address_Type",
+    "override_name":                 "gpo.Override_Name",
+    "premier_gpo_id":                "gpo.Premier_GPO_ID",
+    "relationship_to_top_parent":    "gpo.Relationship_To_Top_Parent",
+    "relationship_to_direct_parent": "gpo.Relationship_To_Direct_Parent",
+    "committed_program_eligibility": "gpo.Committed_Program_Eligibility",
+    "affiliation_1":                 "gpo.Aggregation_Affiliation_1",
+    "affiliation_2":                 "gpo.Aggregation_Affiliation_2",
+    "affiliation_3":                 "gpo.Aggregation_Affiliation_3",
+    # Vizient-specific — to be created in STEP
+    "vizient_member_id":             "gpo.Vizient_Member_ID",
+    "supply_program":                "gpo.Supply_Program",
+    "amc_tier_pricing":              "gpo.AMC_Tier_Pricing",
+    "group_1":                       "gpo.Vizient_Group_1",
+    "group_2":                       "gpo.Vizient_Group_2",
+    "group_3":                       "gpo.Vizient_Group_3",
 }
 
 # GPO-specific attribute overrides — added on top of ATTRIBUTE_MAP per GPO
 GPO_ATTRIBUTE_MAP = {
     "healthtrust": {
-        "native_member_id": "GPO_HealthTrust_Key",  # GPOID — unique key attribute
+        "native_member_id": "gpo.GPO_Member_ID",    # GPOID — exists in STEP
     },
     "premier": {
-        "native_member_id": "GPO_Premier_Key",      # Address ID — unique key attribute
+        "native_member_id": "gpo.GPO_Premier_Key",  # Address ID — needs creating in STEP
     },
     "vizient": {
-        "native_member_id": "GPO_Vizient_Key",      # LIC — unique key attribute
+        "native_member_id": "gpo.LIC",              # LIC — exists in STEP
     },
 }
 
