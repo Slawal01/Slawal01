@@ -61,6 +61,13 @@ ATTRIBUTE_MAP = {
     "amc_tier_pricing":             "AMCTierPricing",
 }
 
+# GPO-specific attribute overrides — added on top of ATTRIBUTE_MAP per GPO
+GPO_ATTRIBUTE_MAP = {
+    "vizient": {
+        "native_member_id": "GPO_Vizient_Key",   # LIC stored as unique key attribute
+    },
+}
+
 
 # ============================================================
 # GPO-SPECIFIC COLUMN MAPPINGS
@@ -322,7 +329,10 @@ def _add_common_values(el, row, prefix, gpo_key):
     """Add <Values> block with all mapped attributes."""
     values_el = etree.SubElement(el, "Values")
 
-    for field, attr_id in ATTRIBUTE_MAP.items():
+    # Merge base map with any GPO-specific overrides
+    attr_map = {**ATTRIBUTE_MAP, **GPO_ATTRIBUTE_MAP.get(gpo_key, {})}
+
+    for field, attr_id in attr_map.items():
         if field in row.index:
             val = row[field]
             if "date" in field.lower():
