@@ -63,8 +63,14 @@ ATTRIBUTE_MAP = {
 
 # GPO-specific attribute overrides — added on top of ATTRIBUTE_MAP per GPO
 GPO_ATTRIBUTE_MAP = {
+    "healthtrust": {
+        "native_member_id": "GPO_HealthTrust_Key",  # GPOID — unique key attribute
+    },
+    "premier": {
+        "native_member_id": "GPO_Premier_Key",      # Address ID — unique key attribute
+    },
     "vizient": {
-        "native_member_id": "GPO_Vizient_Key",   # LIC stored as unique key attribute
+        "native_member_id": "GPO_Vizient_Key",      # LIC — unique key attribute
     },
 }
 
