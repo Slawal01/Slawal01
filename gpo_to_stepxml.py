@@ -53,7 +53,7 @@ ATTRIBUTE_MAP = {
     # Premier-specific — to be created in STEP
     "address_type":                  "gpo.Address_Type",
     "override_name":                 "gpo.Override_Name",
-    "premier_gpo_id":                "gpo.Premier_GPO_ID",
+    "premier_gpo_id":                "gpo.GPO_Member_ID",
     "relationship_to_top_parent":    "gpo.Relationship_To_Top_Parent",
     "relationship_to_direct_parent": "gpo.Relationship_To_Direct_Parent",
     "committed_program_eligibility": "gpo.Committed_Program_Eligibility",
