@@ -23,10 +23,16 @@ from datetime import datetime
 STEP_CONFIG = {
     "workspace_id":       "Main",
     "context_id":         "Content",
-    "root_node_id":       "GPOHierarchy",       # GPO Hierarchy Root node in STEP
     "type_top_parent":    "GPO_Top_Parent",      # Object type for top parent nodes
     "type_direct_parent": "GPO_Direct_Parent",   # Object type for direct parent nodes
     "type_member":        "GPO_Member",          # Object type for leaf members
+}
+
+# GPO-specific parent node IDs in STEP — top parents load under these
+GPO_PARENT_NODES = {
+    "healthtrust": "GPO_HealthTrust",
+    "premier":     "GPO_Premier",
+    "vizient":     "GPO_Vizient",
 }
 
 # Maps schema field → STEP Attribute ID
@@ -209,9 +215,10 @@ def build_stepxml(df, gpo_key):
     Build a STEPXML ElementTree from a deduplicated DataFrame.
     Processes in 3 passes: Top Parents → Direct Parents → Members.
     """
-    cfg        = GPO_CONFIGS[gpo_key]
-    prefix     = cfg["id_prefix"]
-    hier_field = cfg["hierarchy_id_field"]  # field in same ID space as top/direct parent IDs
+    cfg         = GPO_CONFIGS[gpo_key]
+    prefix      = cfg["id_prefix"]
+    hier_field  = cfg["hierarchy_id_field"]  # field in same ID space as top/direct parent IDs
+    gpo_node_id = GPO_PARENT_NODES[gpo_key]  # STEP node where top parents sit (e.g. GPO_HealthTrust)
 
     root = etree.Element("STEP-ProductInformation")
     root.set("WorkspaceID", STEP_CONFIG["workspace_id"])
@@ -228,7 +235,7 @@ def build_stepxml(df, gpo_key):
         emitted_ids.add(step_id)
         el = etree.SubElement(products_el, "Product")
         el.set("ID",         step_id)
-        el.set("ParentID",   STEP_CONFIG["root_node_id"])
+        el.set("ParentID",   gpo_node_id)
         el.set("UserTypeID", STEP_CONFIG["type_top_parent"])
         name_el = etree.SubElement(el, "Name")
         name_el.text = name
