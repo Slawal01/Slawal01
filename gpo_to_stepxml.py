@@ -22,7 +22,7 @@ from datetime import datetime
 
 STEP_CONFIG = {
     "workspace_id":       "Main",
-    "context_id":         "Content",
+    "context_id":         "Context1",
     "type_top_parent":    "GPO_Top_Parent",      # Object type for top parent nodes
     "type_direct_parent": "GPO_Direct_Parent",   # Object type for direct parent nodes
     "type_member":        "GPO_Member",          # Object type for leaf members
@@ -181,14 +181,14 @@ GPO_CONFIGS = {
     "healthtrust": {
         "code":             "HEALTHTRUST",
         "column_map":       HEALTHTRUST_MAP,
-        "id_prefix":        "HT_",
+        "id_prefix":        "GPO_HealthTrust_",
         # GPOID is used for both native ID and hierarchy comparisons
         "hierarchy_id_field": "native_member_id",
     },
     "premier": {
         "code":             "PREMIER",
         "column_map":       PREMIER_MAP,
-        "id_prefix":        "PR_",
+        "id_prefix":        "GPO_Premier_",
         # Hierarchy compares GPO ID (premier_gpo_id) against Top/Direct Parent GPO ID
         # native_member_id = Address ID lives in a different ID space
         "hierarchy_id_field": "premier_gpo_id",
@@ -196,7 +196,7 @@ GPO_CONFIGS = {
     "vizient": {
         "code":             "VIZIENT",
         "column_map":       VIZIENT_MAP,
-        "id_prefix":        "VZ_",
+        "id_prefix":        "GPO_Vizient_",
         # Hierarchy compares Member ID (vizient_member_id) against System ID / Parent ID
         # native_member_id = LIC lives in a different ID space
         "hierarchy_id_field": "vizient_member_id",
@@ -214,12 +214,27 @@ def make_step_id(prefix, native_id):
 
 
 def format_date(val):
-    """Normalize date values to YYYY-MM-DD string."""
-    if pd.isna(val) or val is None:
+    """Normalize date values to ISO 8601 YYYY-MM-DD string."""
+    if val is None:
         return None
+    try:
+        if pd.isna(val):
+            return None
+    except (TypeError, ValueError):
+        pass
     if isinstance(val, datetime):
         return val.strftime("%Y-%m-%d")
-    return str(val).strip()
+    s = str(val).strip()
+    if not s or s.lower() == 'nat':
+        return None
+    # Try parsing common formats
+    for fmt in ("%m/%d/%Y", "%d/%m/%Y", "%m-%d-%Y", "%d-%b-%Y"):
+        try:
+            from datetime import datetime as dt
+            return dt.strptime(s, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return s
 
 
 def add_value(parent_el, attr_id, value):
@@ -248,9 +263,11 @@ def build_stepxml(df, gpo_key):
     gpo_node_id = GPO_PARENT_NODES[gpo_key]  # STEP node where top parents sit (e.g. GPO_HealthTrust)
 
     root = etree.Element("STEP-ProductInformation")
-    root.set("WorkspaceID", STEP_CONFIG["workspace_id"])
-    root.set("ContextID",   STEP_CONFIG["context_id"])
-    root.set("xmlns:xsi",   "http://www.w3.org/2001/XMLSchema-instance")
+    root.set("ExportTime",    datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    root.set("ExportContext", STEP_CONFIG["context_id"])
+    root.set("ContextID",     STEP_CONFIG["context_id"])
+    root.set("WorkspaceID",   STEP_CONFIG["workspace_id"])
+    root.set("UseContextLocale", "false")
 
     products_el = etree.SubElement(root, "Products")
 
