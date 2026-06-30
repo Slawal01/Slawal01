@@ -299,10 +299,15 @@ def build_stepxml(df, gpo_key):
             _add_common_values(el, row, prefix, gpo_key)
 
     # ---- PASS 1: Top Parents ----
-    # Rule: top_parent_id = direct_parent_id = member's own hierarchy ID
+    # Rule A (HealthTrust/Vizient): top_parent_id = direct_parent_id = own hierarchy ID
+    # Rule B (Premier): top_parent_id = own hierarchy ID, direct_parent_id is blank/empty
+    direct_blank = df["direct_parent_id"].astype(str).str.strip().isin(["", "nan", "None", "NaN"])
     top_parents = df[
         (df["top_parent_id"].astype(str).str.strip() == df[hier_field].astype(str).str.strip()) &
-        (df["direct_parent_id"].astype(str).str.strip() == df[hier_field].astype(str).str.strip())
+        (
+            (df["direct_parent_id"].astype(str).str.strip() == df[hier_field].astype(str).str.strip()) |
+            direct_blank
+        )
     ].drop_duplicates(subset=["top_parent_id"])
 
     for _, row in top_parents.iterrows():
@@ -319,8 +324,9 @@ def build_stepxml(df, gpo_key):
             emit_top_parent(step_id, str(row.get("top_parent_name", "")).strip())
 
     # ---- PASS 2: Direct Parents ----
-    # Rule: top_parent_id = direct_parent_id != member's own hierarchy ID
+    # Rule: top_parent_id = direct_parent_id != member's own hierarchy ID, direct not blank
     direct_parents = df[
+        (~direct_blank) &
         (df["top_parent_id"].astype(str).str.strip() == df["direct_parent_id"].astype(str).str.strip()) &
         (df["top_parent_id"].astype(str).str.strip() != df[hier_field].astype(str).str.strip())
     ].drop_duplicates(subset=["direct_parent_id"])
@@ -348,14 +354,16 @@ def build_stepxml(df, gpo_key):
     #   a) direct_parent_id = own hierarchy ID, top ≠ self  → 2-level: parent under top
     #   b) top_parent_id != direct_parent_id != self        → 3-level: parent under direct
     members = df[
-        df["top_parent_id"].astype(str).str.strip() != df["direct_parent_id"].astype(str).str.strip()
+        (~direct_blank) &
+        (df["top_parent_id"].astype(str).str.strip() != df["direct_parent_id"].astype(str).str.strip())
     ]
 
     for _, row in members.iterrows():
         step_id = make_step_id(prefix, row["native_member_id"])
 
-        # 2-level: member references itself as direct parent → sit under top parent
-        if str(row["direct_parent_id"]).strip() == str(row[hier_field]).strip():
+        # 2-level: direct parent = own ID, or blank → sit under top parent
+        direct_id = str(row["direct_parent_id"]).strip()
+        if direct_id in ("", "nan", "None", "NaN") or direct_id == str(row[hier_field]).strip():
             parent_step_id = make_step_id(prefix, resolve_id(row["top_parent_id"]))
         else:
             parent_step_id = make_step_id(prefix, resolve_id(row["direct_parent_id"]))
