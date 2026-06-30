@@ -262,6 +262,18 @@ def build_stepxml(df, gpo_key):
     hier_field  = cfg["hierarchy_id_field"]  # field in same ID space as top/direct parent IDs
     gpo_node_id = GPO_PARENT_NODES[gpo_key]  # STEP node where top parents sit (e.g. GPO_HealthTrust)
 
+    # For GPOs where hierarchy IDs differ from native IDs (Premier: GPO ID vs Address ID),
+    # build a lookup so entity IDs always use native_member_id (Address ID).
+    # For HealthTrust/Vizient hier_field == native_member_id so this is a pass-through.
+    hier_to_native = dict(
+        zip(df[hier_field].astype(str).str.strip(),
+            df["native_member_id"].astype(str).str.strip())
+    )
+
+    def resolve_id(hier_id):
+        """Return native_member_id for a given hierarchy ID, or the ID itself if not found."""
+        return hier_to_native.get(str(hier_id).strip(), str(hier_id).strip())
+
     root = etree.Element("STEP-ProductInformation")
     root.set("ExportTime",    datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     root.set("ExportContext", STEP_CONFIG["context_id"])
@@ -294,7 +306,7 @@ def build_stepxml(df, gpo_key):
     ].drop_duplicates(subset=["top_parent_id"])
 
     for _, row in top_parents.iterrows():
-        step_id = make_step_id(prefix, row["top_parent_id"])
+        step_id = make_step_id(prefix, resolve_id(row["top_parent_id"]))
         emit_top_parent(step_id, str(row.get("top_parent_name", "")).strip(), row)
 
     # ---- PASS 1b: Implied Top Parents ----
@@ -302,7 +314,7 @@ def build_stepxml(df, gpo_key):
     # Synthesize them from the top_parent_name column so children have a valid parent.
     all_top_ids = df[["top_parent_id", "top_parent_name"]].drop_duplicates(subset=["top_parent_id"])
     for _, row in all_top_ids.iterrows():
-        step_id = make_step_id(prefix, row["top_parent_id"])
+        step_id = make_step_id(prefix, resolve_id(row["top_parent_id"]))
         if step_id not in emitted_ids:
             emit_top_parent(step_id, str(row.get("top_parent_name", "")).strip())
 
@@ -314,8 +326,8 @@ def build_stepxml(df, gpo_key):
     ].drop_duplicates(subset=["direct_parent_id"])
 
     for _, row in direct_parents.iterrows():
-        step_id        = make_step_id(prefix, row["direct_parent_id"])
-        parent_step_id = make_step_id(prefix, row["top_parent_id"])
+        step_id        = make_step_id(prefix, resolve_id(row["direct_parent_id"]))
+        parent_step_id = make_step_id(prefix, resolve_id(row["top_parent_id"]))
 
         if step_id in emitted_ids:
             continue
@@ -344,9 +356,9 @@ def build_stepxml(df, gpo_key):
 
         # 2-level: member references itself as direct parent → sit under top parent
         if str(row["direct_parent_id"]).strip() == str(row[hier_field]).strip():
-            parent_step_id = make_step_id(prefix, row["top_parent_id"])
+            parent_step_id = make_step_id(prefix, resolve_id(row["top_parent_id"]))
         else:
-            parent_step_id = make_step_id(prefix, row["direct_parent_id"])
+            parent_step_id = make_step_id(prefix, resolve_id(row["direct_parent_id"]))
 
         el = etree.SubElement(products_el, "Product")
         el.set("ID",         step_id)
