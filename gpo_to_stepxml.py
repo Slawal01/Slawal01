@@ -67,7 +67,7 @@ ATTRIBUTE_MAP = {
     "affiliation_3_start":           "gpo.Affiliation_Start_Date_3",
     "affiliation_3_end":             "gpo.Affiliation_End_Date_3",
     # Vizient-specific — to be created in STEP
-    "vizient_member_id":             "gpo.Vizient_Member_ID",
+    "vizient_member_id":             "gpo.GPO_Member_ID",
     "supply_program":                "gpo.Supply_Program",
     "amc_tier_pricing":              "gpo.AMC_Tier_Pricing",
     "group_1":                       "gpo.Vizient_Group_1",
