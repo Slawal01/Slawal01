@@ -81,7 +81,7 @@ GPO_ATTRIBUTE_MAP = {
         "native_member_id": "gpo.GPO_Member_ID",    # GPOID — exists in STEP
     },
     "premier": {
-        "native_member_id": "gpo.GPO_Premier_Key",  # Address ID — needs creating in STEP
+        "native_member_id": "gpo.Address_ID",       # Address ID — exists in STEP
     },
     "vizient": {
         "native_member_id": "gpo.LIC",              # LIC — exists in STEP
