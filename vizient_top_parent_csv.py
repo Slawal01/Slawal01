@@ -5,7 +5,7 @@ Reads the Vizient source CSV, filters to top parents matching the target
 customer list, and outputs a STEP-compatible CSV import file.
 
 Top Parent logic:
-  System ID == Member ID  AND  (Parent ID blank OR Parent ID == System ID)
+  System ID == Parent ID == Member ID  (all three must be equal and non-blank)
   Rows with blank or NA System Name are rejected.
   System Name must match vizient_target_systems.txt (case-insensitive).
 
@@ -81,10 +81,10 @@ def main():
             parent_id   = row.get(COL_PARENT_ID,   "").strip()
             lic         = row.get(COL_LIC,         "").strip()
 
-            # Top parent logic
+            # Top parent logic: System ID == Parent ID == Member ID (all three must match)
             is_top = (
-                system_id and member_id and system_id == member_id and
-                (parent_id == "" or parent_id == system_id)
+                system_id and member_id and parent_id and
+                system_id == member_id and system_id == parent_id
             )
 
             if not is_top:
@@ -105,15 +105,14 @@ def main():
                 continue
             seen_ids.add(system_id)
 
-            entity_key = lic if lic else system_id
-
+            # Entity Key for top parent = System ID (same as Member ID)
             top_parents.append({
                 "<ID>":                 "",
                 "<Name>":               system_name,
                 "<Parent ID>":          STEP_PARENT_ID,
                 "<Object Type>":        STEP_OBJECT_TYPE,
                 "gpo.GPO_Member_ID":    system_id,
-                "gpo.GPO_Entity_Key":   entity_key,
+                "gpo.GPO_Entity_Key":   system_id,
             })
 
     print(f"  Total rows read  : {total_rows:,}")
