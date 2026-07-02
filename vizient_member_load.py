@@ -188,9 +188,10 @@ def main():
     parser = argparse.ArgumentParser(description="Generate Vizient Member STEPXML")
     parser.add_argument("--vizient",     default=DEFAULT_VIZIENT,     help="Vizient source CSV")
     parser.add_argument("--step-export", default=DEFAULT_STEP_EXPORT, help="STEP export CSV with top parent IDs")
-    parser.add_argument("--output",      default=DEFAULT_OUTPUT_FILE, help="Output XML file path (single file mode)")
+    parser.add_argument("--output",       default=DEFAULT_OUTPUT_FILE, help="Output XML file path (single file mode)")
     parser.add_argument("--batches",     type=int, default=1,         help="Split output into N batch files (e.g. 5)")
     parser.add_argument("--system",      default=None,                help="Test mode: process only this System ID (e.g. 770471)")
+    parser.add_argument("--filter-names", default=None,               help="Path to text file with one System Name per line — only process matching systems")
     args = parser.parse_args()
 
     # ── Load STEP export: map System ID → STEP entity ID ────────────────────
@@ -211,6 +212,13 @@ def main():
     total_rows = 0
     skipped    = 0
 
+    # Load name filter if provided
+    target_names = None
+    if args.filter_names:
+        with open(args.filter_names, encoding='utf-8') as nf:
+            target_names = {line.strip().lower() for line in nf if line.strip()}
+        print(f"  Name filter loaded: {len(target_names):,} names")
+
     if args.system:
         print(f"  TEST MODE: filtering to System ID = {args.system}")
 
@@ -226,6 +234,9 @@ def main():
                 continue
 
             if args.system and system_id != args.system:
+                continue
+
+            if target_names and system_name.lower() not in target_names:
                 continue
 
             if system_id not in systems:
