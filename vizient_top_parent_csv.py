@@ -71,10 +71,12 @@ def main():
             system_name = row.get(COL_SYSTEM_NAME, "").strip()
             parent_id   = row.get(COL_PARENT_ID,   "").strip()
 
-            # Top parent logic: System ID == Parent ID == Member ID (all three must match)
+            # Top parent logic:
+            #   System ID == Member ID  AND  (Parent ID == System ID OR Parent ID is blank)
             is_top = (
-                system_id and member_id and parent_id and
-                system_id == member_id and system_id == parent_id
+                system_id and member_id and
+                system_id == member_id and
+                (parent_id == system_id or parent_id == "")
             )
 
             if not is_top:
