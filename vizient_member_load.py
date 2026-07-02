@@ -199,6 +199,7 @@ def main():
     parser.add_argument("--vizient",     default=DEFAULT_VIZIENT,     help="Vizient source CSV")
     parser.add_argument("--step-export", default=DEFAULT_STEP_EXPORT, help="STEP export CSV with top parent IDs")
     parser.add_argument("--output-dir",  default=DEFAULT_OUTPUT_DIR,  help="Output directory for XML files")
+    parser.add_argument("--system",      default=None,                help="Test mode: process only this System ID (e.g. 770471)")
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -221,6 +222,9 @@ def main():
     total_rows = 0
     skipped    = 0
 
+    if args.system:
+        print(f"  TEST MODE: filtering to System ID = {args.system}")
+
     with open(args.vizient, newline='', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -230,6 +234,9 @@ def main():
 
             if not system_id:
                 skipped += 1
+                continue
+
+            if args.system and system_id != args.system:
                 continue
 
             if system_id not in systems:
