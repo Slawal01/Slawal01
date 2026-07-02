@@ -188,7 +188,8 @@ def main():
     parser = argparse.ArgumentParser(description="Generate Vizient Member STEPXML")
     parser.add_argument("--vizient",     default=DEFAULT_VIZIENT,     help="Vizient source CSV")
     parser.add_argument("--step-export", default=DEFAULT_STEP_EXPORT, help="STEP export CSV with top parent IDs")
-    parser.add_argument("--output",      default=DEFAULT_OUTPUT_FILE, help="Output XML file path")
+    parser.add_argument("--output",      default=DEFAULT_OUTPUT_FILE, help="Output XML file path (single file mode)")
+    parser.add_argument("--batches",     type=int, default=1,         help="Split output into N batch files (e.g. 5)")
     parser.add_argument("--system",      default=None,                help="Test mode: process only this System ID (e.g. 770471)")
     args = parser.parse_args()
 
@@ -235,40 +236,54 @@ def main():
     print(f"  Skipped (no system ID): {skipped:,}")
     print(f"  Unique systems: {len(systems):,}")
 
-    # ── Generate one XML per system ──────────────────────────────────────────
-    generated  = 0
+    # ── Build list of (step_id, name, system_id, rows) to process ───────────
     no_step_id = []
-
-    # Build one combined XML tree
-    root = ET.Element("STEP-ProductInformation")
-    root.set("ExportTime",       datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    root.set("ContextID",        STEP_CONTEXT)
-    root.set("WorkspaceID",      STEP_WORKSPACE)
-    root.set("UseContextLocale", "false")
-    entities_el = ET.SubElement(root, "Entities")
+    work_items = []
 
     for system_id, data in systems.items():
         step_id = step_id_map.get(system_id)
         if not step_id:
             no_step_id.append(system_id)
             continue
+        work_items.append((step_id, data["name"], system_id, data["rows"]))
 
-        build_system(entities_el, step_id, data["name"], system_id, data["rows"])
-        generated += 1
-
-        if generated % 100 == 0:
-            print(f"  ... {generated} systems processed")
-
-    print(f"\nSystems in XML      : {generated:,}")
+    total = len(work_items)
+    print(f"\nSystems to write    : {total:,}")
     if no_step_id:
         print(f"Systems with no STEP ID ({len(no_step_id)}): "
               f"{no_step_id[:10]}{'...' if len(no_step_id) > 10 else ''}")
         print("  (These systems are not yet loaded as top parents in STEP)")
 
-    print(f"\nWriting output file : {args.output}")
-    xml_str = minidom.parseString(ET.tostring(root, encoding="unicode")).toprettyxml(indent="  ")
-    with open(args.output, "w", encoding="utf-8") as f:
-        f.write(xml_str)
+    # ── Split into batches and write ─────────────────────────────────────────
+    n_batches   = max(1, args.batches)
+    batch_size  = (total + n_batches - 1) // n_batches  # ceiling division
+    base, ext   = os.path.splitext(args.output)
+
+    for b in range(n_batches):
+        chunk = work_items[b * batch_size : (b + 1) * batch_size]
+        if not chunk:
+            break
+
+        root = ET.Element("STEP-ProductInformation")
+        root.set("ExportTime",       datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        root.set("ContextID",        STEP_CONTEXT)
+        root.set("WorkspaceID",      STEP_WORKSPACE)
+        root.set("UseContextLocale", "false")
+        entities_el = ET.SubElement(root, "Entities")
+
+        for step_id, name, system_id, rows in chunk:
+            build_system(entities_el, step_id, name, system_id, rows)
+
+        if n_batches == 1:
+            out_path = args.output
+        else:
+            out_path = f"{base}_batch{b + 1}{ext}"
+
+        print(f"  Writing batch {b + 1}/{n_batches} ({len(chunk)} systems) → {os.path.basename(out_path)}")
+        xml_str = minidom.parseString(ET.tostring(root, encoding="unicode")).toprettyxml(indent="  ")
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(xml_str)
+
     print("Done.\n")
 
 
