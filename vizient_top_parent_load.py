@@ -5,11 +5,14 @@ Reads the Vizient source Excel file and generates a STEPXML file
 containing only Top Parent entities for loading into Stibo STEP.
 
 Top Parent Logic:
-  System ID == Parent ID  (self-referencing rows)
+  System ID == Member ID  AND  (Parent ID is blank OR Parent ID == System ID)
+  Rows with blank or NA System Name are rejected.
 
 Attributes loaded per top parent:
   - gpo.GPO_Member_ID  = System ID
-  - gpo.GPO_Entity_Key = System ID  (same value)
+  - gpo.GPO_Entity_Key = System ID  (same value — no LIC for top parents)
+
+IDs are NOT set — STEP auto-assigns them.
 
 IDs are NOT set — STEP auto-assigns them.
 
