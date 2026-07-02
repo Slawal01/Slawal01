@@ -33,6 +33,7 @@ DEFAULT_OUTPUT = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\
 
 # Vizient source column names
 COL_MEMBER_ID   = "Member ID"
+COL_LIC         = "LIC"
 COL_SYSTEM_ID   = "System ID"
 COL_SYSTEM_NAME = "System Name"
 COL_PARENT_ID   = "Parent ID"
@@ -57,6 +58,10 @@ def build_xml(top_parents):
     for row in top_parents:
         system_id   = row[COL_SYSTEM_ID]
         system_name = row[COL_SYSTEM_NAME]
+        lic         = row.get(COL_LIC, "").strip()
+
+        # Entity Key = LIC if present, else System ID (Member ID)
+        entity_key = lic if lic else system_id
 
         el = ET.SubElement(entities_el, "Entity")
         # No ID attribute — STEP auto-assigns
@@ -73,7 +78,7 @@ def build_xml(top_parents):
 
         v2 = ET.SubElement(values_el, "Value")
         v2.set("AttributeID", "gpo.GPO_Entity_Key")
-        v2.text = system_id
+        v2.text = entity_key
 
     # Pretty print using minidom (no lxml needed)
     xml_str = minidom.parseString(ET.tostring(root, encoding="unicode")).toprettyxml(indent="  ")
@@ -115,7 +120,12 @@ def main():
                     print(f"  REJECTED (no name): System ID {system_id}")
                     continue
                 seen_ids.add(system_id)
-                top_parents.append({COL_SYSTEM_ID: system_id, COL_SYSTEM_NAME: system_name})
+                lic = row.get(COL_LIC, "").strip()
+                top_parents.append({
+                    COL_SYSTEM_ID:   system_id,
+                    COL_SYSTEM_NAME: system_name,
+                    COL_LIC:         lic,
+                })
 
     print(f"Total rows in file  : {len(all_rows):,}")
     print(f"Top parents found   : {len(top_parents):,}")
