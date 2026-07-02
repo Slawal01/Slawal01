@@ -254,130 +254,99 @@ def add_value(parent_el, attr_id, value):
 
 def build_stepxml(df, gpo_key):
     """
-    Build a STEPXML ElementTree from a deduplicated DataFrame.
-    Processes in 3 passes: Top Parents → Direct Parents → Members.
+    Build a STEPXML ElementTree using nested <Entities>/<Entity> format.
+
+    Vizient hierarchy logic:
+      Top Parent   : Member ID == System ID
+      Direct Parent: Parent ID != System ID AND Parent ID != Member ID
+      Member       : Member ID != System ID AND (Parent ID == System ID OR Parent ID == Member ID)
+
+    gpo.GPO_Entity_Key = LIC if present, else Member ID (native_member_id)
     """
     cfg         = GPO_CONFIGS[gpo_key]
-    prefix      = cfg["id_prefix"]
-    hier_field  = cfg["hierarchy_id_field"]  # field in same ID space as top/direct parent IDs
-    gpo_node_id = GPO_PARENT_NODES[gpo_key]  # STEP node where top parents sit (e.g. GPO_HealthTrust)
-
-    # For GPOs where hierarchy IDs differ from native IDs (Premier: GPO ID vs Address ID),
-    # build a lookup so entity IDs always use native_member_id (Address ID).
-    # For HealthTrust/Vizient hier_field == native_member_id so this is a pass-through.
-    hier_to_native = dict(
-        zip(df[hier_field].astype(str).str.strip(),
-            df["native_member_id"].astype(str).str.strip())
-    )
-
-    def resolve_id(hier_id):
-        """Return native_member_id for a given hierarchy ID, or the ID itself if not found."""
-        return hier_to_native.get(str(hier_id).strip(), str(hier_id).strip())
+    gpo_node_id = GPO_PARENT_NODES[gpo_key]
 
     root = etree.Element("STEP-ProductInformation")
-    root.set("ExportTime",    datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    root.set("ExportContext", STEP_CONFIG["context_id"])
-    root.set("ContextID",     STEP_CONFIG["context_id"])
-    root.set("WorkspaceID",   STEP_CONFIG["workspace_id"])
+    root.set("ExportTime",       datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    root.set("ContextID",        STEP_CONFIG["context_id"])
+    root.set("WorkspaceID",      STEP_CONFIG["workspace_id"])
     root.set("UseContextLocale", "false")
 
-    products_el = etree.SubElement(root, "Products")
+    entities_el = etree.SubElement(root, "Entities")
 
-    emitted_ids = set()
+    def s(val):
+        v = str(val).strip()
+        return "" if v.lower() in ("nan", "none", "nat") else v
 
-    def emit_top_parent(step_id, name, row=None):
-        if step_id in emitted_ids:
-            return
-        emitted_ids.add(step_id)
-        el = etree.SubElement(products_el, "Product")
-        el.set("ID",         step_id)
-        el.set("ParentID",   gpo_node_id)
-        el.set("UserTypeID", STEP_CONFIG["type_top_parent"])
-        name_el = etree.SubElement(el, "Name")
-        name_el.text = name
-        if row is not None:
-            _add_common_values(el, row, prefix, gpo_key)
+    hier_field = cfg["hierarchy_id_field"]  # vizient_member_id for Vizient
 
-    # ---- PASS 1: Top Parents ----
-    # Rule A (HealthTrust/Vizient): top_parent_id = direct_parent_id = own hierarchy ID
-    # Rule B (Premier): top_parent_id = own hierarchy ID, direct_parent_id is blank/empty
-    direct_blank = df["direct_parent_id"].astype(str).str.strip().isin(["", "nan", "None", "NaN"])
-    top_parents = df[
-        (df["top_parent_id"].astype(str).str.strip() == df[hier_field].astype(str).str.strip()) &
-        (
-            (df["direct_parent_id"].astype(str).str.strip() == df[hier_field].astype(str).str.strip()) |
-            direct_blank
-        )
-    ].drop_duplicates(subset=["top_parent_id"])
+    # Group all rows by top_parent_id
+    df["_top"]    = df["top_parent_id"].astype(str).str.strip()
+    df["_direct"] = df["direct_parent_id"].astype(str).str.strip()
+    df["_hier"]   = df[hier_field].astype(str).str.strip()
 
-    for _, row in top_parents.iterrows():
-        step_id = make_step_id(prefix, resolve_id(row["top_parent_id"]))
-        emit_top_parent(step_id, str(row.get("top_parent_name", "")).strip(), row)
-
-    # ---- PASS 1b: Implied Top Parents ----
-    # Top parent IDs referenced by child rows but with no standalone own-row in Pass 1.
-    # Synthesize them from the top_parent_name column so children have a valid parent.
-    all_top_ids = df[["top_parent_id", "top_parent_name"]].drop_duplicates(subset=["top_parent_id"])
-    for _, row in all_top_ids.iterrows():
-        step_id = make_step_id(prefix, resolve_id(row["top_parent_id"]))
-        if step_id not in emitted_ids:
-            emit_top_parent(step_id, str(row.get("top_parent_name", "")).strip())
-
-    # ---- PASS 2: Direct Parents ----
-    # Rule: top_parent_id = direct_parent_id != member's own hierarchy ID, direct not blank
-    direct_parents = df[
-        (~direct_blank) &
-        (df["top_parent_id"].astype(str).str.strip() == df["direct_parent_id"].astype(str).str.strip()) &
-        (df["top_parent_id"].astype(str).str.strip() != df[hier_field].astype(str).str.strip())
-    ].drop_duplicates(subset=["direct_parent_id"])
-
-    for _, row in direct_parents.iterrows():
-        step_id        = make_step_id(prefix, resolve_id(row["direct_parent_id"]))
-        parent_step_id = make_step_id(prefix, resolve_id(row["top_parent_id"]))
-
-        if step_id in emitted_ids:
+    for top_id, top_group in df.groupby("_top"):
+        top_name = s(top_group["top_parent_name"].iloc[0])
+        if not top_name or top_name.upper() == "NA":
             continue
-        emitted_ids.add(step_id)
 
-        el = etree.SubElement(products_el, "Product")
-        el.set("ID",         step_id)
-        el.set("ParentID",   parent_step_id)
-        el.set("UserTypeID", STEP_CONFIG["type_direct_parent"])
+        top_el = etree.SubElement(entities_el, "Entity")
+        top_el.set("UserTypeID", STEP_CONFIG["type_top_parent"])
+        top_el.set("ParentID",   gpo_node_id)
+        etree.SubElement(top_el, "Name").text = top_name
 
-        name_el = etree.SubElement(el, "Name")
-        name_el.text = str(row.get("direct_parent_name", "")).strip()
+        # Top parent own attributes (from its own row if it exists)
+        top_rows = top_group[top_group["_hier"] == top_id]
+        if not top_rows.empty:
+            _add_common_values(top_el, top_rows.iloc[0], "", gpo_key)
 
-        _add_common_values(el, row, prefix, gpo_key)
+        # Split members of this top parent into direct-parent groups vs direct members
+        children = top_group[top_group["_hier"] != top_id]
 
-    # ---- PASS 3: Members ----
-    # Includes two sub-cases:
-    #   a) direct_parent_id = own hierarchy ID, top ≠ self  → 2-level: parent under top
-    #   b) top_parent_id != direct_parent_id != self        → 3-level: parent under direct
-    members = df[
-        (~direct_blank) &
-        (df["top_parent_id"].astype(str).str.strip() != df["direct_parent_id"].astype(str).str.strip())
-    ]
+        # Direct Parent: Parent ID != System ID AND Parent ID != Member ID
+        has_direct_parent = children[
+            (children["_direct"] != top_id) &
+            (children["_direct"] != children["_hier"]) &
+            (children["_direct"] != "") &
+            (~children["_direct"].isin(["nan", "None", "NaN"]))
+        ]
 
-    for _, row in members.iterrows():
-        step_id = make_step_id(prefix, row["native_member_id"])
+        # Member under Top Parent: Parent ID == System ID OR Parent ID == Member ID
+        direct_members = children[
+            (children["_direct"] == top_id) |
+            (children["_direct"] == children["_hier"]) |
+            (children["_direct"].isin(["", "nan", "None", "NaN"]))
+        ]
 
-        # 2-level: direct parent = own ID, or blank → sit under top parent
-        direct_id = str(row["direct_parent_id"]).strip()
-        if direct_id in ("", "nan", "None", "NaN") or direct_id == str(row[hier_field]).strip():
-            parent_step_id = make_step_id(prefix, resolve_id(row["top_parent_id"]))
-        else:
-            parent_step_id = make_step_id(prefix, resolve_id(row["direct_parent_id"]))
+        # Emit Direct Parents and their members
+        emitted_direct = set()
+        for _, row in has_direct_parent.iterrows():
+            dp_id   = s(row["_direct"])
+            dp_name = s(row.get("direct_parent_name", ""))
 
-        el = etree.SubElement(products_el, "Product")
-        el.set("ID",         step_id)
-        el.set("ParentID",   parent_step_id)
-        el.set("UserTypeID", STEP_CONFIG["type_member"])
+            if dp_id not in emitted_direct:
+                emitted_direct.add(dp_id)
+                dp_el = etree.SubElement(top_el, "Entity")
+                dp_el.set("UserTypeID", STEP_CONFIG["type_direct_parent"])
+                etree.SubElement(dp_el, "Name").text = dp_name
+                dp_vals = etree.SubElement(dp_el, "Values")
+                v = etree.SubElement(dp_vals, "Value")
+                v.set("AttributeID", "gpo.GPO_Member_ID"); v.text = dp_id
 
-        name_el = etree.SubElement(el, "Name")
-        name_el.text = str(row.get("name1", "")).strip()
+            # Add member under its direct parent
+            mem_el = etree.SubElement(dp_el, "Entity")
+            mem_el.set("UserTypeID", STEP_CONFIG["type_member"])
+            etree.SubElement(mem_el, "Name").text = s(row.get("name1", ""))
+            _add_common_values(mem_el, row, "", gpo_key)
+            _add_child_records(mem_el, row, gpo_key)
 
-        _add_common_values(el, row, prefix, gpo_key)
-        _add_child_records(el, row, gpo_key)
+        # Emit direct members under top parent
+        for _, row in direct_members.iterrows():
+            mem_el = etree.SubElement(top_el, "Entity")
+            mem_el.set("UserTypeID", STEP_CONFIG["type_member"])
+            etree.SubElement(mem_el, "Name").text = s(row.get("name1", ""))
+            _add_common_values(mem_el, row, "", gpo_key)
+            _add_child_records(mem_el, row, gpo_key)
 
     return etree.ElementTree(root)
 
