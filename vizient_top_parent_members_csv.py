@@ -20,6 +20,16 @@ Attributes per member:
   gpo.Facility_Category        = Facility Category
   gpo.Facility_Type            = Facility Type
   gpo.Rx_Group                 = Rx Group
+  gpo.Supply_Program           = Supply Program
+  gpo.AMC_Tier_Pricing         = AMC Tier Pricing
+  gpo.Vizient_Group_1          = Vizient Group 1
+  gpo.Vizient_Group_2          = Vizient Group 2
+  gpo.Vizient_Group_3          = Vizient Group 3
+  loc.Address_Line_1           = Address1
+  loc.Address_Line_2           = Address2
+  loc.Address_City             = City
+  loc.Address_State            = State
+  loc.Address_Postal_Code      = Zip Code
   loc.Address_Country          = US
 
 Usage:
@@ -44,9 +54,19 @@ COL_MEMBER_NAME = "Member Name"
 COL_SYSTEM_ID   = "System ID"
 COL_SYSTEM_NAME = "System Name"
 COL_PARENT_ID   = "Parent ID"
+COL_ADDRESS1    = "Address1"
+COL_ADDRESS2    = "Address2"
+COL_CITY        = "City"
+COL_STATE       = "State"
+COL_ZIP         = "Zip Code"
 COL_FAC_CAT     = "Facility Category"
 COL_FAC_TYPE    = "Facility Type"
 COL_RX_GROUP    = "Rx Group"
+COL_VIZ_GRP1    = "Vizient Group 1"
+COL_VIZ_GRP2    = "Vizient Group 2"
+COL_VIZ_GRP3    = "Vizient Group 3"
+COL_SUPPLY_PGM  = "Supply Program"
+COL_AMC_TIER    = "AMC Tier Pricing"
 
 # STEP export columns
 STEP_COL_ID   = "<ID>"
@@ -68,6 +88,16 @@ OUT_FIELDS = [
     "gpo.Facility_Category",
     "gpo.Facility_Type",
     "gpo.Rx_Group",
+    "gpo.Supply_Program",
+    "gpo.AMC_Tier_Pricing",
+    "gpo.Vizient_Group_1",
+    "gpo.Vizient_Group_2",
+    "gpo.Vizient_Group_3",
+    "loc.Address_Line_1",
+    "loc.Address_Line_2",
+    "loc.Address_City",
+    "loc.Address_State",
+    "loc.Address_Postal_Code",
     "loc.Address_Country",
 ]
 
@@ -158,20 +188,30 @@ def main():
             entity_key = lic if lic else member_id
 
             members.append({
-                "<ID>":                        "",
-                "<Name>":                      safe(row.get(COL_MEMBER_NAME, system_name)),
-                "<Parent ID>":                 step_id,
-                "<Object Type>":               STEP_OBJECT_TYPE,
-                "gpo.GPO_Member_ID":           member_id,
-                "gpo.GPO_Entity_Key":          entity_key,
-                "gpo.LIC":                     lic,
-                "gpo.GLN":                     safe_gln(row.get(COL_GLN, "")),
-                "gpo.HIN":                     safe_gln(row.get(COL_HIN, "")),
+                "<ID>":                         "",
+                "<Name>":                       safe(row.get(COL_MEMBER_NAME, system_name)),
+                "<Parent ID>":                  step_id,
+                "<Object Type>":                STEP_OBJECT_TYPE,
+                "gpo.GPO_Member_ID":            member_id,
+                "gpo.GPO_Entity_Key":           entity_key,
+                "gpo.LIC":                      lic,
+                "gpo.GLN":                      safe_gln(row.get(COL_GLN, "")),
+                "gpo.HIN":                      safe_gln(row.get(COL_HIN, "")),
                 "gpo.Membership_Eligible_Date": parse_date(row.get(COL_MEMBER_DATE, "")),
-                "gpo.Facility_Category":       safe(row.get(COL_FAC_CAT, "")),
-                "gpo.Facility_Type":           safe(row.get(COL_FAC_TYPE, "")),
-                "gpo.Rx_Group":                safe(row.get(COL_RX_GROUP, "")),
-                "loc.Address_Country":         "US",
+                "gpo.Facility_Category":        safe(row.get(COL_FAC_CAT, "")),
+                "gpo.Facility_Type":            safe(row.get(COL_FAC_TYPE, "")),
+                "gpo.Rx_Group":                 safe(row.get(COL_RX_GROUP, "")),
+                "gpo.Supply_Program":           safe(row.get(COL_SUPPLY_PGM, "")),
+                "gpo.AMC_Tier_Pricing":         safe(row.get(COL_AMC_TIER, "")),
+                "gpo.Vizient_Group_1":          safe(row.get(COL_VIZ_GRP1, "")),
+                "gpo.Vizient_Group_2":          safe(row.get(COL_VIZ_GRP2, "")),
+                "gpo.Vizient_Group_3":          safe(row.get(COL_VIZ_GRP3, "")),
+                "loc.Address_Line_1":           safe(row.get(COL_ADDRESS1, "")),
+                "loc.Address_Line_2":           safe(row.get(COL_ADDRESS2, "")),
+                "loc.Address_City":             safe(row.get(COL_CITY, "")),
+                "loc.Address_State":            safe(row.get(COL_STATE, "")),
+                "loc.Address_Postal_Code":      safe(row.get(COL_ZIP, "")),
+                "loc.Address_Country":          "US",
             })
 
     print(f"  Total rows read   : {total_rows:,}")
