@@ -25,13 +25,11 @@ Usage:
 import argparse
 import csv
 
-DEFAULT_VIZIENT     = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\Vizient week 10.15.2025.csv"
-DEFAULT_FILTER      = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\vizient_target_systems.txt"
+DEFAULT_VIZIENT     = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\vizient_customers_extract.csv"
 DEFAULT_OUTPUT      = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\vizient_top_parents_import.csv"
 
 # Vizient source columns
 COL_MEMBER_ID   = "Member ID"
-COL_LIC         = "LIC"
 COL_SYSTEM_ID   = "System ID"
 COL_SYSTEM_NAME = "System Name"
 COL_PARENT_ID   = "Parent ID"
@@ -53,18 +51,11 @@ OUT_FIELDS = [
 
 def main():
     parser = argparse.ArgumentParser(description="Generate Vizient Top Parent CSV for STEP import")
-    parser.add_argument("--vizient",      default=DEFAULT_VIZIENT, help="Vizient source CSV")
-    parser.add_argument("--filter-names", default=DEFAULT_FILTER,  help="Text file with target System Names")
-    parser.add_argument("--output",       default=DEFAULT_OUTPUT,  help="Output CSV file path")
+    parser.add_argument("--vizient", default=DEFAULT_VIZIENT, help="Vizient customer extract CSV")
+    parser.add_argument("--output",  default=DEFAULT_OUTPUT,  help="Output CSV file path")
     args = parser.parse_args()
 
-    # Load target names
-    print(f"\nReading filter: {args.filter_names}")
-    with open(args.filter_names, encoding="utf-8") as f:
-        target_names = {line.strip().lower() for line in f if line.strip()}
-    print(f"  Target systems: {len(target_names):,}")
-
-    # Read Vizient CSV and find top parents
+    # Read customer extract and find top parents
     print(f"\nReading: {args.vizient}")
     seen_ids    = set()
     top_parents = []
@@ -79,7 +70,6 @@ def main():
             system_id   = row.get(COL_SYSTEM_ID,   "").strip()
             system_name = row.get(COL_SYSTEM_NAME, "").strip()
             parent_id   = row.get(COL_PARENT_ID,   "").strip()
-            lic         = row.get(COL_LIC,         "").strip()
 
             # Top parent logic: System ID == Parent ID == Member ID (all three must match)
             is_top = (
@@ -88,10 +78,6 @@ def main():
             )
 
             if not is_top:
-                continue
-
-            # Name filter
-            if system_name.lower() not in target_names:
                 continue
 
             # Reject blank or NA names
