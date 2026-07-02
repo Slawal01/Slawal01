@@ -19,14 +19,14 @@ Usage:
 """
 
 import argparse
-import pandas as pd
+import csv
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from datetime import datetime
 
 # ── CONFIG ──────────────────────────────────────────────────────────────────
-DEFAULT_INPUT  = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\Vizient week 10.15.2025.xlsx"
-DEFAULT_OUTPUT = "vizient_top_parents.xml"
+DEFAULT_INPUT  = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\Vizient week 10.15.2025.csv"
+DEFAULT_OUTPUT = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\vizient_top_parents.xml"
 
 # Vizient source column names
 COL_SYSTEM_ID   = "System ID"
@@ -41,7 +41,7 @@ STEP_TYPE      = "GPO_Top_Parent"    # Object Type ID
 # ────────────────────────────────────────────────────────────────────────────
 
 
-def build_xml(df_top):
+def build_xml(top_parents):
     root = ET.Element("STEP-ProductInformation")
     root.set("ExportTime",       datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     root.set("ContextID",        STEP_CONTEXT)
@@ -50,9 +50,9 @@ def build_xml(df_top):
 
     entities_el = ET.SubElement(root, "Entities")
 
-    for _, row in df_top.iterrows():
-        system_id   = str(row[COL_SYSTEM_ID]).strip()
-        system_name = str(row[COL_SYSTEM_NAME]).strip()
+    for row in top_parents:
+        system_id   = row[COL_SYSTEM_ID]
+        system_name = row[COL_SYSTEM_NAME]
 
         el = ET.SubElement(entities_el, "Entity")
         # No ID attribute — STEP auto-assigns
@@ -83,22 +83,28 @@ def main():
     args = parser.parse_args()
 
     print(f"\nReading: {args.input}")
-    df = pd.read_excel(args.input, dtype=str)
-    df = df.fillna("")
 
-    # Normalize
-    df[COL_SYSTEM_ID]  = df[COL_SYSTEM_ID].str.strip()
-    df[COL_PARENT_ID]  = df[COL_PARENT_ID].str.strip()
+    all_rows = []
+    seen_ids = set()
+    top_parents = []
 
-    # Top parent logic: System ID == Parent ID
-    df_top = df[df[COL_SYSTEM_ID] == df[COL_PARENT_ID]] \
-               .drop_duplicates(subset=[COL_SYSTEM_ID]) \
-               [[COL_SYSTEM_ID, COL_SYSTEM_NAME]]
+    with open(args.input, newline='', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            all_rows.append(row)
+            system_id   = row.get(COL_SYSTEM_ID, "").strip()
+            parent_id   = row.get(COL_PARENT_ID, "").strip()
+            system_name = row.get(COL_SYSTEM_NAME, "").strip()
 
-    print(f"Total rows in file  : {len(df):,}")
-    print(f"Top parents found   : {len(df_top):,}")
+            # Top parent logic: System ID == Parent ID, deduplicate
+            if system_id and system_id == parent_id and system_id not in seen_ids:
+                seen_ids.add(system_id)
+                top_parents.append({COL_SYSTEM_ID: system_id, COL_SYSTEM_NAME: system_name})
 
-    xml_str = build_xml(df_top)
+    print(f"Total rows in file  : {len(all_rows):,}")
+    print(f"Top parents found   : {len(top_parents):,}")
+
+    xml_str = build_xml(top_parents)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(xml_str)
 
