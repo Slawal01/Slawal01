@@ -29,6 +29,7 @@ DEFAULT_INPUT  = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\
 DEFAULT_OUTPUT = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\vizient_top_parents.xml"
 
 # Vizient source column names
+COL_MEMBER_ID   = "Member ID"
 COL_SYSTEM_ID   = "System ID"
 COL_SYSTEM_NAME = "System Name"
 COL_PARENT_ID   = "Parent ID"
@@ -92,12 +93,24 @@ def main():
         reader = csv.DictReader(f)
         for row in reader:
             all_rows.append(row)
-            system_id   = row.get(COL_SYSTEM_ID, "").strip()
-            parent_id   = row.get(COL_PARENT_ID, "").strip()
+            member_id   = row.get(COL_MEMBER_ID,   "").strip()
+            system_id   = row.get(COL_SYSTEM_ID,   "").strip()
+            parent_id   = row.get(COL_PARENT_ID,   "").strip()
             system_name = row.get(COL_SYSTEM_NAME, "").strip()
 
-            # Top parent logic: System ID == Parent ID, deduplicate
-            if system_id and system_id == parent_id and system_id not in seen_ids:
+            # Top parent logic:
+            #   System ID == Parent ID == Member ID  (all three match)
+            #   OR System ID == Member ID            (Parent ID blank or same)
+            is_top = (
+                system_id and member_id and system_id == member_id and
+                (parent_id == "" or parent_id == system_id)
+            )
+
+            if is_top and system_id not in seen_ids:
+                # Reject blank or NA names
+                if not system_name or system_name.upper() == "NA":
+                    print(f"  REJECTED (no name): System ID {system_id}")
+                    continue
                 seen_ids.add(system_id)
                 top_parents.append({COL_SYSTEM_ID: system_id, COL_SYSTEM_NAME: system_name})
 
