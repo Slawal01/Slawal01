@@ -396,6 +396,13 @@ def _add_common_values(el, row, prefix, gpo_key):
                 val = format_date(val)
             add_value(values_el, attr_id, val)
 
+    # gpo.GPO_Entity_Key = LIC if present, else native_member_id (Member ID)
+    lic_val    = row.get("native_member_id") if gpo_key == "vizient" else None
+    member_val = row.get("vizient_member_id") if gpo_key == "vizient" else row.get("native_member_id")
+    entity_key = lic_val if lic_val and str(lic_val).strip() not in ("", "nan") else member_val
+    if entity_key:
+        add_value(values_el, "gpo.GPO_Entity_Key", entity_key)
+
 
 def _add_child_records(el, row, gpo_key):
     """Add program, group, and affiliation child elements."""
