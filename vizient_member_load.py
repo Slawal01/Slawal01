@@ -37,6 +37,7 @@ from datetime import datetime
 DEFAULT_VIZIENT     = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\Vizient week 10.15.2025.csv"
 DEFAULT_STEP_EXPORT = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\csv-2026-07-01_21.11.46.csv"
 DEFAULT_OUTPUT_DIR  = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\vizient_members"
+DEFAULT_OUTPUT_FILE = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\vizient_all_members.xml"
 
 # Vizient source column names
 COL_MEMBER_ID   = "Member ID"
@@ -120,16 +121,8 @@ def add_member_values(values_el, row):
     add_value(values_el, "loc.Address_Country",          "US")
 
 
-def build_xml(step_id, system_name, system_id, rows):
-    """Build STEPXML for one system (references existing top parent, nests members)."""
-    root = ET.Element("STEP-ProductInformation")
-    root.set("ExportTime",       datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    root.set("ContextID",        STEP_CONTEXT)
-    root.set("WorkspaceID",      STEP_WORKSPACE)
-    root.set("UseContextLocale", "false")
-
-    entities_el = ET.SubElement(root, "Entities")
-
+def build_system(entities_el, step_id, system_name, system_id, rows):
+    """Add one system's top parent + members into an existing <Entities> element."""
     # Reference the existing top parent in STEP by its assigned ID
     top_el = ET.SubElement(entities_el, "Entity")
     top_el.set("ID",         step_id)
@@ -190,19 +183,14 @@ def build_xml(step_id, system_name, system_id, rows):
         mem_vals = ET.SubElement(mem_el, "Values")
         add_member_values(mem_vals, row)
 
-    xml_str = minidom.parseString(ET.tostring(root, encoding="unicode")).toprettyxml(indent="  ")
-    return xml_str
-
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate Vizient Member STEPXML files")
+    parser = argparse.ArgumentParser(description="Generate Vizient Member STEPXML")
     parser.add_argument("--vizient",     default=DEFAULT_VIZIENT,     help="Vizient source CSV")
     parser.add_argument("--step-export", default=DEFAULT_STEP_EXPORT, help="STEP export CSV with top parent IDs")
-    parser.add_argument("--output-dir",  default=DEFAULT_OUTPUT_DIR,  help="Output directory for XML files")
+    parser.add_argument("--output",      default=DEFAULT_OUTPUT_FILE, help="Output XML file path")
     parser.add_argument("--system",      default=None,                help="Test mode: process only this System ID (e.g. 770471)")
     args = parser.parse_args()
-
-    os.makedirs(args.output_dir, exist_ok=True)
 
     # ── Load STEP export: map System ID → STEP entity ID ────────────────────
     print(f"\nReading STEP export: {args.step_export}")
@@ -251,28 +239,36 @@ def main():
     generated  = 0
     no_step_id = []
 
+    # Build one combined XML tree
+    root = ET.Element("STEP-ProductInformation")
+    root.set("ExportTime",       datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    root.set("ContextID",        STEP_CONTEXT)
+    root.set("WorkspaceID",      STEP_WORKSPACE)
+    root.set("UseContextLocale", "false")
+    entities_el = ET.SubElement(root, "Entities")
+
     for system_id, data in systems.items():
         step_id = step_id_map.get(system_id)
         if not step_id:
             no_step_id.append(system_id)
             continue
 
-        xml_str  = build_xml(step_id, data["name"], system_id, data["rows"])
-        out_name = f"vizient_{system_id}.xml"
-        out_path = os.path.join(args.output_dir, out_name)
-        with open(out_path, "w", encoding="utf-8") as f:
-            f.write(xml_str)
+        build_system(entities_el, step_id, data["name"], system_id, data["rows"])
         generated += 1
 
         if generated % 100 == 0:
-            print(f"  ... {generated} files written")
+            print(f"  ... {generated} systems processed")
 
-    print(f"\nXML files generated : {generated:,}")
+    print(f"\nSystems in XML      : {generated:,}")
     if no_step_id:
         print(f"Systems with no STEP ID ({len(no_step_id)}): "
               f"{no_step_id[:10]}{'...' if len(no_step_id) > 10 else ''}")
         print("  (These systems are not yet loaded as top parents in STEP)")
-    print(f"Output directory    : {args.output_dir}")
+
+    print(f"\nWriting output file : {args.output}")
+    xml_str = minidom.parseString(ET.tostring(root, encoding="unicode")).toprettyxml(indent="  ")
+    with open(args.output, "w", encoding="utf-8") as f:
+        f.write(xml_str)
     print("Done.\n")
 
 
