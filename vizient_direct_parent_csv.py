@@ -25,7 +25,7 @@ import argparse
 import csv
 
 DEFAULT_EXTRACT     = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\vizient_customers_extract.csv"
-DEFAULT_STEP_EXPORT = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\vizient_top_parents_step_export.csv"
+DEFAULT_STEP_EXPORT = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\STEP Parent ID Vizient.csv"
 DEFAULT_OUTPUT      = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\vizient_direct_parents_import.csv"
 
 # Vizient extract columns
