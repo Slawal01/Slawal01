@@ -44,6 +44,7 @@ OUT_FIELDS = [
     "<Object Type>",
     "gpo.GPO_Member_ID",
     "gpo.GPO_Entity_Key",
+    "gpo.Address_ID",
 ]
 
 
@@ -97,8 +98,9 @@ def main():
                 "<Name>":             name1,
                 "<Parent ID>":        STEP_PARENT_ID,
                 "<Object Type>":      STEP_OBJECT_TYPE,
-                "gpo.GPO_Member_ID":  address_id,
+                "gpo.GPO_Member_ID":  gpo_id,
                 "gpo.GPO_Entity_Key": address_id,
+                "gpo.Address_ID":     address_id,
             })
 
     print(f"  Total rows read    : {total_rows:,}")
