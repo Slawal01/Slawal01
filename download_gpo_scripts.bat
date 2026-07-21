@@ -24,6 +24,9 @@ echo   vizient_member_load.py
 curl -s -o "%GPO_DIR%\vizient_member_csv.py" "%BASE_URL%/vizient_member_csv.py"
 echo   vizient_member_csv.py
 
+curl -s -o "%GPO_DIR%\premier_top_parent_csv.py" "%BASE_URL%/premier_top_parent_csv.py"
+echo   premier_top_parent_csv.py
+
 echo.
 echo Done. All scripts saved to GPO DATA folder.
 echo.
