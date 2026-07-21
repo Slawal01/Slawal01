@@ -30,7 +30,7 @@ import argparse
 import csv
 
 DEFAULT_INPUT      = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\Premier complete data.csv"
-DEFAULT_FOCUS      = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\Focus_20260721_17.43.07.xlsx"
+DEFAULT_FOCUS      = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\premier_top_parents_step.csv"
 DEFAULT_OUTPUT     = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\premier_direct_parents_import.csv"
 
 COL_GPO_ID       = "GPO ID"
@@ -55,29 +55,43 @@ OUT_FIELDS = [
 ]
 
 
+def name_matches(premier_name, focus_map):
+    """Look up STEP ID for a top parent name using exact then prefix matching."""
+    key = premier_name.lower().strip()
+    if key in focus_map:
+        return focus_map[key]
+    for f, step_id in focus_map.items():
+        if key.startswith(f) or f.startswith(key):
+            return step_id
+    return None
+
+
 def load_focus_list(path):
-    """Load focus list: Top Parent Name (lower) -> CMDM STEP ID."""
+    """Load STEP export: Top Parent Name (lower) -> STEP ID. Skips non-top-parent rows."""
     focus_map  = {}
     duplicates = set()
 
     if path.lower().endswith(".xlsx"):
-        # Read xlsx without pandas using openpyxl
         try:
             import openpyxl
             wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
             ws = wb.active
             headers = None
-            id_col = name_col = None
+            id_col = name_col = type_col = None
             for row in ws.iter_rows(values_only=True):
                 if headers is None:
-                    headers = [str(c).strip() if c else "" for c in row]
-                    id_col   = headers.index("<ID>")   if "<ID>"   in headers else None
-                    name_col = headers.index("<Name>") if "<Name>" in headers else None
+                    headers   = [str(c).strip() if c else "" for c in row]
+                    id_col    = headers.index("<ID>")               if "<ID>"               in headers else None
+                    name_col  = headers.index("<Name>")             if "<Name>"             in headers else None
+                    type_col  = headers.index("<Object Type Name>") if "<Object Type Name>" in headers else None
                     continue
                 if id_col is None or name_col is None:
                     break
-                step_id = str(row[id_col]).strip()   if row[id_col]   else ""
-                name    = str(row[name_col]).strip()  if row[name_col] else ""
+                obj_type = str(row[type_col]).strip() if (type_col is not None and row[type_col]) else ""
+                if obj_type and "top parent" not in obj_type.lower():
+                    continue
+                step_id = str(row[id_col]).strip()  if row[id_col]  else ""
+                name    = str(row[name_col]).strip() if row[name_col] else ""
                 if not step_id or not name or step_id == "None":
                     continue
                 key = name.lower()
@@ -91,6 +105,9 @@ def load_focus_list(path):
     else:
         with open(path, newline="", encoding="utf-8-sig") as f:
             for row in csv.DictReader(f):
+                obj_type = row.get("<Object Type Name>", "").strip()
+                if obj_type and "top parent" not in obj_type.lower():
+                    continue
                 step_id = row.get("<ID>",   "").strip()
                 name    = row.get("<Name>", "").strip()
                 if not step_id or not name:
@@ -162,8 +179,8 @@ def main():
                 continue
             seen_dp.add(dp_id)
 
-            # Look up top parent CMDM ID
-            cmdm_id = focus_map.get(top_name.lower())
+            # Look up top parent STEP ID (fuzzy match)
+            cmdm_id = name_matches(top_name, focus_map)
             if not cmdm_id:
                 no_focus.append(f"{top_id} / {top_name}")
                 continue
