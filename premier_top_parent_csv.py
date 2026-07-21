@@ -50,6 +50,20 @@ OUT_FIELDS = [
 ]
 
 
+def name_matches_focus(premier_name, focus_names):
+    """Return True if premier_name matches any focus list name.
+    Handles cases like 'UPMC' (focus) matching 'UPMC Health System' (Premier).
+    """
+    p = premier_name.lower().strip()
+    if p in focus_names:
+        return True
+    # Check if any focus name is a prefix of the Premier name
+    for f in focus_names:
+        if p.startswith(f) or f.startswith(p):
+            return True
+    return False
+
+
 def load_focus_list(path):
     """Return set of target names (lower-cased) from focus list XLSX or CSV."""
     focus_names = set()
@@ -124,8 +138,8 @@ def main():
                 rejected += 1
                 continue
 
-            # Filter to focus list
-            if name1.lower() not in focus_names:
+            # Filter to focus list (handles partial matches e.g. "UPMC" -> "UPMC Health System")
+            if not name_matches_focus(name1, focus_names):
                 not_in_focus += 1
                 continue
 
