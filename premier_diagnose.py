@@ -44,8 +44,8 @@ unmatched = [(gid, name) for gid, name in premier_top_parents.items() if name.lo
 print(f"Matched to focus list  : {len(matched):,}")
 print(f"NOT in focus list      : {len(unmatched):,}")
 
-print(f"\nFirst 20 Premier top parent names NOT in focus list:")
-for gid, name in sorted(unmatched, key=lambda x: x[1])[:20]:
+print(f"\nAll Premier top parent names NOT in focus list:")
+for gid, name in sorted(unmatched, key=lambda x: x[1]):
     print(f"  {gid:<12} {name}")
 
 # Write full mismatch list to CSV
