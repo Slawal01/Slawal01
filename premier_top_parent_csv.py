@@ -5,8 +5,7 @@ Reads Premier complete data CSV and generates a STEP-compatible CSV
 import file for Top Parent entities.
 
 Top Parent logic:
-  GPO ID == Top Parent GPO ID
-  AND (Direct Parent GPO ID == GPO ID OR Direct Parent GPO ID is blank)
+  GPO ID == Top Parent GPO ID == Direct Parent GPO ID
   One unique Top Parent per unique GPO ID.
 
 Output columns:
@@ -73,11 +72,10 @@ def main():
             if not gpo_id or not top_id:
                 continue
 
-            # Top parent: GPO ID == Top Parent GPO ID
-            # AND Direct Parent GPO ID == GPO ID or blank
+            # Top parent: GPO ID == Top Parent GPO ID == Direct Parent GPO ID
             is_top = (
                 gpo_id == top_id and
-                (direct_id == "" or direct_id == gpo_id)
+                gpo_id == direct_id
             )
             if not is_top:
                 continue
