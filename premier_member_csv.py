@@ -31,6 +31,16 @@ Output columns:
   gpo.Relationship_To_Top_Parent  Relationship to Top Parent
   gpo.Relationship_To_Direct_Parent Relationship to Direct Parent
   gpo.Override_Name               Override Name
+  gpo.Committed_Program_Eligibility Committed Program Eligibility
+  gpo.Aggregation_Affiliation_1   Aggregation Affiliation 1
+  gpo.Affiliation_Start_Date_1    Affiliation Start Date 1
+  gpo.Affiliation_End_Date_1      Affiliation End Date 1
+  gpo.Aggregation_Affiliation_2   Aggregation Affiliation 2
+  gpo.Affiliation_Start_Date_2    Affiliation Start Date 2
+  gpo.Affiliation_End_Date_2      Affiliation End Date 2
+  gpo.Aggregation_Affiliation_3   Aggregation Affiliation 3
+  gpo.Affiliation_Start_Date_3    Affiliation Start Date 3
+  gpo.Affiliation_End_Date_3      Affiliation End Date 3
   loc.PhoneNumber                 Phone
   loc.Address_Line_1              Address 1
   loc.Address_Line_2              Address 2
@@ -77,6 +87,16 @@ COL_TOP_ID       = "Top Parent GPO ID"
 COL_TOP_NAME     = "Top Parent Name 1"
 COL_DP_ID        = "Direct Parent GPO ID"
 COL_DP_NAME      = "Direct Parent Name 1"
+COL_COMMITTED    = "Committed Program Eligibility"
+COL_AFF1         = "Aggregation Affiliation 1"
+COL_AFF1_START   = "Affiliation Start Date 1"
+COL_AFF1_END     = "Affiliation End Date 1"
+COL_AFF2         = "Aggregation Affiliation 2"
+COL_AFF2_START   = "Affiliation Start Date 2"
+COL_AFF2_END     = "Affiliation End Date 2"
+COL_AFF3         = "Aggregation Affiliation 3"
+COL_AFF3_START   = "Affiliation Start Date 3"
+COL_AFF3_END     = "Affiliation End Date 3"
 
 STEP_OBJECT_TYPE = "GPO_Member"
 
@@ -96,6 +116,16 @@ OUT_FIELDS = [
     "gpo.Relationship_To_Top_Parent",
     "gpo.Relationship_To_Direct_Parent",
     "gpo.Override_Name",
+    "gpo.Committed_Program_Eligibility",
+    "gpo.Aggregation_Affiliation_1",
+    "gpo.Affiliation_Start_Date_1",
+    "gpo.Affiliation_End_Date_1",
+    "gpo.Aggregation_Affiliation_2",
+    "gpo.Affiliation_Start_Date_2",
+    "gpo.Affiliation_End_Date_2",
+    "gpo.Aggregation_Affiliation_3",
+    "gpo.Affiliation_Start_Date_3",
+    "gpo.Affiliation_End_Date_3",
     "loc.PhoneNumber",
     "loc.Address_Line_1",
     "loc.Address_Line_2",
@@ -259,6 +289,16 @@ def main():
                 "gpo.Relationship_To_Top_Parent": safe(row.get(COL_REL_TOP, "")),
                 "gpo.Relationship_To_Direct_Parent": safe(row.get(COL_REL_DP, "")),
                 "gpo.Override_Name":              override,
+                "gpo.Committed_Program_Eligibility": safe(row.get(COL_COMMITTED, "")),
+                "gpo.Aggregation_Affiliation_1":  safe(row.get(COL_AFF1, "")),
+                "gpo.Affiliation_Start_Date_1":   parse_date(row.get(COL_AFF1_START, "")),
+                "gpo.Affiliation_End_Date_1":     parse_date(row.get(COL_AFF1_END, "")),
+                "gpo.Aggregation_Affiliation_2":  safe(row.get(COL_AFF2, "")),
+                "gpo.Affiliation_Start_Date_2":   parse_date(row.get(COL_AFF2_START, "")),
+                "gpo.Affiliation_End_Date_2":     parse_date(row.get(COL_AFF2_END, "")),
+                "gpo.Aggregation_Affiliation_3":  safe(row.get(COL_AFF3, "")),
+                "gpo.Affiliation_Start_Date_3":   parse_date(row.get(COL_AFF3_START, "")),
+                "gpo.Affiliation_End_Date_3":     parse_date(row.get(COL_AFF3_END, "")),
                 "loc.PhoneNumber":                safe(row.get(COL_PHONE, "")),
                 "loc.Address_Line_1":             safe(row.get(COL_ADDR1, "")),
                 "loc.Address_Line_2":             safe(row.get(COL_ADDR2, "")),
