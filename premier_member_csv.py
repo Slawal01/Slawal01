@@ -142,6 +142,29 @@ def safe(val):
     return "" if v.lower() in ("nan", "none", "nat", "n/a", "na") else v
 
 
+COUNTRY_MAP = {
+    "usa": "US", "united states": "US", "united states of america": "US", "u.s.a.": "US", "u.s.": "US",
+    "can": "CA", "canada": "CA",
+    "mex": "MX", "mexico": "MX",
+    "gbr": "GB", "united kingdom": "GB", "uk": "GB", "great britain": "GB",
+    "aus": "AU", "australia": "AU",
+    "deu": "DE", "germany": "DE",
+    "fra": "FR", "france": "FR",
+    "ind": "IN", "india": "IN",
+    "chn": "CN", "china": "CN",
+    "jpn": "JP", "japan": "JP",
+    "bra": "BR", "brazil": "BR",
+}
+
+
+def normalize_country(val):
+    v = safe(val)
+    if not v:
+        return ""
+    lookup = v.lower().strip(".")
+    return COUNTRY_MAP.get(lookup, v)
+
+
 def safe_gln(val):
     v = safe(val)
     if not v:
@@ -306,7 +329,7 @@ def main():
                 "loc.Address_City":               safe(row.get(COL_CITY, "")),
                 "loc.Address_State":              safe(row.get(COL_STATE, "")),
                 "loc.Address_Postal_Code":        safe(row.get(COL_ZIP, "")),
-                "loc.Address_Country":            safe(row.get(COL_COUNTRY, "")),
+                "loc.Address_Country":            normalize_country(row.get(COL_COUNTRY, "")),
             })
 
     print(f"  Total rows read    : {total_rows:,}")
