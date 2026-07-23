@@ -128,15 +128,6 @@ def main():
     parser.add_argument("--output", default=DEFAULT_OUTPUT, help="Output CSV file path")
     args = parser.parse_args()
 
-    # ── Load focus list ───────────────────────────────────────────────────────
-    print(f"\nReading focus list: {args.focus}")
-    focus_map, dupes = load_focus_list(args.focus)
-    print(f"  Top parents in focus : {len(focus_map):,}")
-    if dupes:
-        print(f"  Duplicate names ({len(dupes)}) — first CMDM ID used:")
-        for n in sorted(dupes):
-            print(f"    {n}")
-
     # ── First pass: build GPO ID -> Primary Address ID map ───────────────────
     print(f"\nReading Premier data (pass 1 — address map): {args.input}")
     address_map = {}   # gpo_id -> address_id (prefer Primary)
@@ -156,7 +147,6 @@ def main():
     seen_dp       = set()
     direct_parents = []
     total_rows    = 0
-    no_focus      = []
     no_address    = []
 
     with open(args.input, newline="", encoding="utf-8-sig") as f:
@@ -179,36 +169,23 @@ def main():
                 continue
             seen_dp.add(dp_id)
 
-            # Look up top parent STEP ID (fuzzy match)
-            cmdm_id = name_matches(top_name, focus_map)
-            if not cmdm_id:
-                no_focus.append(f"{top_id} / {top_name}")
-                continue
-
             # Look up direct parent's own Address ID
             dp_address_id = address_map.get(dp_id, "")
             if not dp_address_id:
                 no_address.append(f"{dp_id} / {dp_name}")
 
             direct_parents.append({
-                "<ID>":               "",
+                "<ID>":               dp_id,
                 "<Name>":             dp_name,
-                "<Parent ID>":        cmdm_id,
+                "<Parent ID>":        top_id,
                 "<Object Type>":      STEP_OBJECT_TYPE,
                 "gpo.GPO_Member_ID":  dp_id,
-                "gpo.GPO_Entity_Key": dp_address_id,
+                "gpo.GPO_Entity_Key": dp_id,
                 "gpo.Address_ID":     dp_address_id,
             })
 
     print(f"  Total rows read        : {total_rows:,}")
     print(f"  Direct parents found   : {len(direct_parents):,}")
-    if no_focus:
-        no_focus_uniq = sorted(set(no_focus))
-        print(f"  Not in focus list      : {len(no_focus_uniq)}")
-        for n in no_focus_uniq[:10]:
-            print(f"    {n}")
-        if len(no_focus_uniq) > 10:
-            print(f"    ... and {len(no_focus_uniq) - 10} more")
     if no_address:
         print(f"  No Address ID found    : {len(no_address)}")
         for n in no_address[:10]:
