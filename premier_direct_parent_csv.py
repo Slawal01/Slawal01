@@ -147,7 +147,7 @@ def main():
                 no_address.append(f"{dp_id} / {dp_name}")
 
             direct_parents.append({
-                "<ID>":               dp_id,
+                "<ID>":               "",
                 "<Name>":             dp_name,
                 "<Parent ID>":        tp_step_id,
                 "<Object Type>":      STEP_OBJECT_TYPE,
