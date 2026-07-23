@@ -56,15 +56,29 @@ OUT_FIELDS = [
 
 
 def load_tp_ids(path):
-    """Load top parent STEP export: gpo.GPO_Member_ID -> <ID>."""
+    """Load top parent STEP export: name (lower) -> <ID>."""
     tp_map = {}
     with open(path, newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
-            step_id    = row.get("<ID>",              "").strip()
-            gpo_mem_id = row.get("gpo.GPO_Member_ID", "").strip()
-            if step_id and gpo_mem_id:
-                tp_map[gpo_mem_id] = step_id
+            obj_type = row.get("<Object Type Name>", "").strip()
+            if obj_type and "top parent" not in obj_type.lower():
+                continue
+            step_id = row.get("<ID>",   "").strip()
+            name    = row.get("<Name>", "").strip()
+            if step_id and name:
+                tp_map[name.lower()] = step_id
     return tp_map
+
+
+def name_matches_tp(top_name, tp_map):
+    """Exact then prefix match on top parent name."""
+    key = top_name.lower().strip()
+    if key in tp_map:
+        return tp_map[key]
+    for f, step_id in tp_map.items():
+        if key.startswith(f) or f.startswith(key):
+            return step_id
+    return None
 
 
 def main():
@@ -121,10 +135,10 @@ def main():
                 continue
             seen_dp.add(dp_id)
 
-            # Look up top parent STEP ID
-            tp_step_id = tp_map.get(top_id)
+            # Look up top parent STEP ID by name
+            tp_step_id = name_matches_tp(top_name, tp_map)
             if not tp_step_id:
-                no_tp.append(f"{top_id}")
+                no_tp.append(f"{top_id} / {top_name}")
                 continue
 
             # Look up direct parent's own Address ID
