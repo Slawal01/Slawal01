@@ -59,8 +59,7 @@ import csv
 from datetime import datetime
 
 DEFAULT_INPUT     = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\Premier complete data.csv"
-DEFAULT_TP_EXPORT = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\premier_top_parents_step.csv"
-DEFAULT_DP_EXPORT = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\premier_direct_parents_step.csv"
+DEFAULT_PARENTS   = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\STEP Parent id for level 1 and 2.csv"
 DEFAULT_OUTPUT    = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\premier_members_import.csv"
 
 COL_GPO_ID       = "GPO ID"
@@ -198,43 +197,31 @@ def parse_date(val):
     return v
 
 
-def load_tp_map(path):
-    """Load top parent STEP export: Name (lower) -> STEP ID."""
+def load_parent_maps(path):
+    """Load combined STEP export into tp_map and dp_map keyed by name (lower)."""
     tp_map = {}
-    with open(path, newline="", encoding="utf-8-sig") as f:
-        for row in csv.DictReader(f):
-            obj_type = row.get("<Object Type Name>", "").strip()
-            if obj_type and "top parent" not in obj_type.lower():
-                continue
-            step_id = row.get("<ID>",   "").strip()
-            name    = row.get("<Name>", "").strip()
-            if step_id and name:
-                tp_map[name.lower()] = step_id
-    return tp_map
-
-
-def load_dp_map(path):
-    """Load direct parent STEP export: (Name lower, Parent STEP ID) -> STEP ID."""
     dp_map = {}
     with open(path, newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
-            obj_type = row.get("<Object Type Name>", "").strip()
-            if obj_type and "direct parent" not in obj_type.lower():
+            obj_type = row.get("<Object Type Name>", "").strip().lower()
+            step_id  = row.get("<ID>",   "").strip()
+            name     = row.get("<Name>", "").strip()
+            if not step_id or not name:
                 continue
-            step_id   = row.get("<ID>",        "").strip()
-            name      = row.get("<Name>",      "").strip()
-            parent_id = row.get("<Parent ID>", "").strip()
-            if step_id and name:
-                dp_map[(name.lower(), parent_id)] = step_id
-    return dp_map
+            key = name.lower()
+            if "top parent" in obj_type:
+                tp_map[key] = step_id
+            elif "direct parent" in obj_type:
+                dp_map[key] = step_id
+    return tp_map, dp_map
 
 
-def name_matches_tp(name, tp_map):
-    """Fuzzy top parent lookup — exact then prefix match."""
+def name_match(name, lookup_map):
+    """Exact then prefix match."""
     key = name.lower().strip()
-    if key in tp_map:
-        return tp_map[key]
-    for f, step_id in tp_map.items():
+    if key in lookup_map:
+        return lookup_map[key]
+    for f, step_id in lookup_map.items():
         if key.startswith(f) or f.startswith(key):
             return step_id
     return None
@@ -242,20 +229,15 @@ def name_matches_tp(name, tp_map):
 
 def main():
     parser = argparse.ArgumentParser(description="Generate Premier Member CSV for STEP import")
-    parser.add_argument("--input",     default=DEFAULT_INPUT,     help="Premier complete data CSV")
-    parser.add_argument("--tp-export", default=DEFAULT_TP_EXPORT, help="Top parent STEP export CSV")
-    parser.add_argument("--dp-export", default=DEFAULT_DP_EXPORT, help="Direct parent STEP export CSV")
-    parser.add_argument("--output",    default=DEFAULT_OUTPUT,    help="Output CSV file path")
+    parser.add_argument("--input",   default=DEFAULT_INPUT,   help="Premier complete data CSV")
+    parser.add_argument("--parents", default=DEFAULT_PARENTS, help="STEP export with level 1 and 2 IDs")
+    parser.add_argument("--output",  default=DEFAULT_OUTPUT,  help="Output CSV file path")
     args = parser.parse_args()
 
-    # ── Load top parent map ───────────────────────────────────────────────────
-    print(f"\nReading top parent export: {args.tp_export}")
-    tp_map = load_tp_map(args.tp_export)
+    # ── Load parent maps ──────────────────────────────────────────────────────
+    print(f"\nReading parent IDs: {args.parents}")
+    tp_map, dp_map = load_parent_maps(args.parents)
     print(f"  Top parents mapped    : {len(tp_map):,}")
-
-    # ── Load direct parent map ────────────────────────────────────────────────
-    print(f"\nReading direct parent export: {args.dp_export}")
-    dp_map = load_dp_map(args.dp_export)
     print(f"  Direct parents mapped : {len(dp_map):,}")
 
     # ── Read Premier data and build member rows ───────────────────────────────
@@ -278,30 +260,22 @@ def main():
             if not gpo_id:
                 continue
 
-            # Skip top parents
-            if gpo_id == top_id and dp_id == "":
-                continue
-
-            # Skip direct parents
+            # Skip direct parents (they are level 2, not members)
             if dp_id and dp_id != top_id and dp_id != gpo_id:
                 continue
 
-            # Resolve top parent STEP ID
-            tp_step_id = name_matches_tp(top_name, tp_map)
-            if not tp_step_id:
-                no_tp.append(f"{gpo_id} / {top_name}")
-                continue
-
             # Determine <Parent ID>
-            if not dp_id or dp_id == top_id:
-                # Member sits directly under top parent
-                step_parent_id = tp_step_id
-            else:
-                # Member sits under direct parent
-                dp_key = (dp_name.lower(), tp_step_id)
-                step_parent_id = dp_map.get(dp_key)
+            if dp_id and dp_id != top_id:
+                # Member sits under a direct parent
+                step_parent_id = name_match(dp_name, dp_map)
                 if not step_parent_id:
                     no_dp.append(f"{gpo_id} / {dp_id} / {dp_name}")
+                    continue
+            else:
+                # Member sits directly under top parent
+                step_parent_id = name_match(top_name, tp_map)
+                if not step_parent_id:
+                    no_tp.append(f"{gpo_id} / {top_name}")
                     continue
 
             override = safe(row.get(COL_OVERRIDE, ""))
