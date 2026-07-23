@@ -153,8 +153,8 @@ def main():
                 "<Name>":             name1,
                 "<Parent ID>":        STEP_PARENT_ID,
                 "<Object Type>":      STEP_OBJECT_TYPE,
-                "gpo.GPO_Member_ID":  gpo_id,
-                "gpo.GPO_Entity_Key": address_id,
+                "gpo.GPO_Member_ID":  top_id,
+                "gpo.GPO_Entity_Key": top_id,
                 "gpo.Address_ID":     address_id,
             })
 
