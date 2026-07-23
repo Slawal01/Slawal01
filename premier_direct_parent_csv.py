@@ -30,7 +30,7 @@ import argparse
 import csv
 
 DEFAULT_INPUT      = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\Premier complete data.csv"
-DEFAULT_FOCUS      = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\premier_top_parents_step.csv"
+DEFAULT_TP_IDS     = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\Parent id for newly created top parent.csv"
 DEFAULT_OUTPUT     = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\premier_direct_parents_import.csv"
 
 COL_GPO_ID       = "GPO ID"
@@ -55,78 +55,29 @@ OUT_FIELDS = [
 ]
 
 
-def name_matches(premier_name, focus_map):
-    """Look up STEP ID for a top parent name using exact then prefix matching."""
-    key = premier_name.lower().strip()
-    if key in focus_map:
-        return focus_map[key]
-    for f, step_id in focus_map.items():
-        if key.startswith(f) or f.startswith(key):
-            return step_id
-    return None
-
-
-def load_focus_list(path):
-    """Load STEP export: Top Parent Name (lower) -> STEP ID. Skips non-top-parent rows."""
-    focus_map  = {}
-    duplicates = set()
-
-    if path.lower().endswith(".xlsx"):
-        try:
-            import openpyxl
-            wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
-            ws = wb.active
-            headers = None
-            id_col = name_col = type_col = None
-            for row in ws.iter_rows(values_only=True):
-                if headers is None:
-                    headers   = [str(c).strip() if c else "" for c in row]
-                    id_col    = headers.index("<ID>")               if "<ID>"               in headers else None
-                    name_col  = headers.index("<Name>")             if "<Name>"             in headers else None
-                    type_col  = headers.index("<Object Type Name>") if "<Object Type Name>" in headers else None
-                    continue
-                if id_col is None or name_col is None:
-                    break
-                obj_type = str(row[type_col]).strip() if (type_col is not None and row[type_col]) else ""
-                if obj_type and "top parent" not in obj_type.lower():
-                    continue
-                step_id = str(row[id_col]).strip()  if row[id_col]  else ""
-                name    = str(row[name_col]).strip() if row[name_col] else ""
-                if not step_id or not name or step_id == "None":
-                    continue
-                key = name.lower()
-                if key in focus_map:
-                    duplicates.add(name)
-                else:
-                    focus_map[key] = step_id
-            wb.close()
-        except ImportError:
-            raise SystemExit("openpyxl not available — save the focus list as CSV and pass it via --focus")
-    else:
-        with open(path, newline="", encoding="utf-8-sig") as f:
-            for row in csv.DictReader(f):
-                obj_type = row.get("<Object Type Name>", "").strip()
-                if obj_type and "top parent" not in obj_type.lower():
-                    continue
-                step_id = row.get("<ID>",   "").strip()
-                name    = row.get("<Name>", "").strip()
-                if not step_id or not name:
-                    continue
-                key = name.lower()
-                if key in focus_map:
-                    duplicates.add(name)
-                else:
-                    focus_map[key] = step_id
-
-    return focus_map, duplicates
+def load_tp_ids(path):
+    """Load top parent STEP export: gpo.GPO_Member_ID -> <ID>."""
+    tp_map = {}
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            step_id    = row.get("<ID>",              "").strip()
+            gpo_mem_id = row.get("gpo.GPO_Member_ID", "").strip()
+            if step_id and gpo_mem_id:
+                tp_map[gpo_mem_id] = step_id
+    return tp_map
 
 
 def main():
     parser = argparse.ArgumentParser(description="Generate Premier Direct Parent CSV for STEP import")
-    parser.add_argument("--input",  default=DEFAULT_INPUT,  help="Premier complete data CSV")
-    parser.add_argument("--focus",  default=DEFAULT_FOCUS,  help="Focus list XLSX/CSV with top parent CMDM IDs")
-    parser.add_argument("--output", default=DEFAULT_OUTPUT, help="Output CSV file path")
+    parser.add_argument("--input",   default=DEFAULT_INPUT,  help="Premier complete data CSV")
+    parser.add_argument("--tp-ids",  default=DEFAULT_TP_IDS, help="Top parent STEP export CSV (for <Parent ID> lookup)")
+    parser.add_argument("--output",  default=DEFAULT_OUTPUT, help="Output CSV file path")
     args = parser.parse_args()
+
+    # ── Load top parent STEP IDs ──────────────────────────────────────────────
+    print(f"\nReading top parent IDs: {args.tp_ids}")
+    tp_map = load_tp_ids(args.tp_ids)
+    print(f"  Top parents loaded   : {len(tp_map):,}")
 
     # ── First pass: build GPO ID -> Primary Address ID map ───────────────────
     print(f"\nReading Premier data (pass 1 — address map): {args.input}")
@@ -144,10 +95,11 @@ def main():
 
     # ── Second pass: find unique direct parents ───────────────────────────────
     print(f"\nReading Premier data (pass 2 — direct parents):")
-    seen_dp       = set()
+    seen_dp        = set()
     direct_parents = []
-    total_rows    = 0
-    no_address    = []
+    total_rows     = 0
+    no_address     = []
+    no_tp          = []
 
     with open(args.input, newline="", encoding="utf-8-sig") as f:
         for row in csv.DictReader(f):
@@ -169,6 +121,12 @@ def main():
                 continue
             seen_dp.add(dp_id)
 
+            # Look up top parent STEP ID
+            tp_step_id = tp_map.get(top_id)
+            if not tp_step_id:
+                no_tp.append(f"{top_id}")
+                continue
+
             # Look up direct parent's own Address ID
             dp_address_id = address_map.get(dp_id, "")
             if not dp_address_id:
@@ -177,7 +135,7 @@ def main():
             direct_parents.append({
                 "<ID>":               dp_id,
                 "<Name>":             dp_name,
-                "<Parent ID>":        top_id,
+                "<Parent ID>":        tp_step_id,
                 "<Object Type>":      STEP_OBJECT_TYPE,
                 "gpo.GPO_Member_ID":  dp_id,
                 "gpo.GPO_Entity_Key": dp_id,
@@ -186,6 +144,8 @@ def main():
 
     print(f"  Total rows read        : {total_rows:,}")
     print(f"  Direct parents found   : {len(direct_parents):,}")
+    if no_tp:
+        print(f"  No top parent STEP ID  : {len(set(no_tp))} (skipped)")
     if no_address:
         print(f"  No Address ID found    : {len(no_address)}")
         for n in no_address[:10]:
