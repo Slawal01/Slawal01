@@ -149,7 +149,7 @@ def main():
             seen_ids.add(gpo_id)
 
             top_parents.append({
-                "<ID>":               gpo_id,
+                "<ID>":               "",
                 "<Name>":             name1,
                 "<Parent ID>":        STEP_PARENT_ID,
                 "<Object Type>":      STEP_OBJECT_TYPE,
