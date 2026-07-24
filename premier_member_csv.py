@@ -260,10 +260,6 @@ def main():
             if not gpo_id:
                 continue
 
-            # Skip top parents (they are level 1)
-            if gpo_id == top_id and dp_id == "":
-                continue
-
             # Determine <Parent ID>
             if dp_id and dp_id != top_id and dp_id != gpo_id:
                 # Member sits under a direct parent (level 2)
