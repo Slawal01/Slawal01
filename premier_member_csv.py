@@ -260,19 +260,19 @@ def main():
             if not gpo_id:
                 continue
 
-            # Skip direct parents (they are level 2, not members)
-            if dp_id and dp_id != top_id and dp_id != gpo_id:
+            # Skip top parents (they are level 1)
+            if gpo_id == top_id and dp_id == "":
                 continue
 
             # Determine <Parent ID>
-            if dp_id and dp_id != top_id:
-                # Member sits under a direct parent
+            if dp_id and dp_id != top_id and dp_id != gpo_id:
+                # Member sits under a direct parent (level 2)
                 step_parent_id = name_match(dp_name, dp_map)
                 if not step_parent_id:
                     no_dp.append(f"{gpo_id} / {dp_id} / {dp_name}")
                     continue
             else:
-                # Member sits directly under top parent
+                # Member sits directly under top parent (level 1)
                 step_parent_id = name_match(top_name, tp_map)
                 if not step_parent_id:
                     no_tp.append(f"{gpo_id} / {top_name}")
