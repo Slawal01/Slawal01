@@ -27,7 +27,7 @@ import argparse
 import csv
 
 DEFAULT_INPUT   = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\HealthTrust deduped.csv"
-DEFAULT_TP_IDS  = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\HealthTrust Parent id for newly created top parent.csv"
+DEFAULT_TP_IDS  = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\HealthTrust Top parent in step.csv"
 DEFAULT_OUTPUT  = r"C:\Users\S670847\OneDrive - Owens & Minor\Documents\GPO DATA\healthtrust_direct_parents_import.csv"
 
 COL_GPOID    = "GPOID"
