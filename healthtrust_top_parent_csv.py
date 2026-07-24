@@ -72,8 +72,10 @@ def main():
             if not gpoid or not top_id:
                 continue
 
-            # Top parent: GPOID == Top Parent GPOID AND Direct Parent GPOID is blank
-            if not (gpoid == top_id and dp_id == ""):
+            # Top parent: GPOID == Top Parent GPOID AND (Direct Parent GPOID blank or == GPOID)
+            if gpoid != top_id:
+                continue
+            if dp_id != "" and dp_id != gpoid:
                 continue
 
             if not top_name:
