@@ -1,0 +1,132 @@
+# Snowflake load definition for the IBT Transaction Semantic model
+#
+# Source: IBT_Transaction_Semantic.pbix is a Power BI *thin report* with a live
+# connection to a Power BI Service semantic model (dataset id
+# f99c66c9-4a3e-4e86-8b78-ae850b79ddb5). It has no data or column schema
+# embedded in the .pbix file itself - only these 46 table names, recovered
+# from the report's cached relationship-diagram layout.
+#
+# One table below (MEMBER) has a full column list because it matches the
+# headers in "Sample Vizient data.xlsx" already in this repo. All other
+# tables are stubs - pull their real columns from the semantic model via its
+# XMLA endpoint (SELECT * FROM $SYSTEM.TMSCHEMA_COLUMNS, or Tabular Editor /
+# DAX Studio "INFO.VIEW.COLUMNS()") and fill them in the same way.
+
+target:
+  database: VIZIENT_DB
+  schema: IBT_TRANSACTION_SEMANTIC
+  warehouse: LOAD_WH
+
+# Snowflake COPY INTO cannot read .xlsx directly. Export each source sheet to
+# CSV (or Parquet) before staging, or land it via Snowpipe/an ELT tool that
+# does the conversion for you.
+file_format:
+  name: CSV_STANDARD
+  type: CSV
+  field_delimiter: ","
+  skip_header: 1
+  field_optionally_enclosed_by: '"'
+  null_if: ["", "NULL", "#REF!"]
+  empty_field_as_null: true
+  date_format: "MM/DD/YYYY"
+  timestamp_format: "MM/DD/YYYY HH24:MI:SS"
+
+stage:
+  name: IBT_LOAD_STAGE
+  url: null   # e.g. 's3://your-bucket/ibt_transaction_semantic/' or a Snowflake internal stage
+  storage_integration: null
+  file_format: CSV_STANDARD
+
+tables:
+  # --- Full schema available (source: Sample Vizient data.xlsx, sheet "Sheet1") ---
+  - name: MEMBER
+    source_file: "Sample Vizient data.xlsx"
+    schema_source: "derived from sample data"
+    columns:
+      - { name: MEMBER_ID,             source_column: "Member ID",             type: NUMBER,        nullable: false }
+      - { name: LIC,                   source_column: "LIC",                   type: VARCHAR(10) }
+      - { name: GLN,                   source_column: "GLN",                   type: VARCHAR(20) }
+      - { name: HIN,                   source_column: "HIN",                   type: VARCHAR(20) }
+      - { name: MEMBER_DATE,           source_column: "Member Date",           type: DATE }
+      - { name: MEMBER_NAME,           source_column: "Member Name",           type: VARCHAR(255) }
+      - { name: STIBO_PARENT_ID,       source_column: "Stibo Parent ID",       type: VARCHAR(50), note: "source data contains #REF! errors - mapped to NULL via file_format.null_if" }
+      - { name: ADDRESS1,              source_column: "Address1",              type: VARCHAR(255) }
+      - { name: ADDRESS2,              source_column: "Address2",              type: VARCHAR(255) }
+      - { name: CITY,                  source_column: "City",                  type: VARCHAR(100) }
+      - { name: STATE,                 source_column: "State",                 type: VARCHAR(2) }
+      - { name: ZIP_CODE,              source_column: "Zip Code",              type: VARCHAR(10), note: "mixed 5-digit and ZIP+4 formats in source" }
+      - { name: MEMBER_PHONE,          source_column: "Member Phone",          type: VARCHAR(20) }
+      - { name: SYSTEM_ID,             source_column: "System ID",             type: NUMBER }
+      - { name: SYSTEM_NAME,           source_column: "System Name",           type: VARCHAR(255) }
+      - { name: PARENT_ID,             source_column: "Parent ID",             type: NUMBER }
+      - { name: PARENT_NAME,           source_column: "Parent Name",           type: VARCHAR(255) }
+      - { name: ACCOUNT_MANAGER,       source_column: "Account Manager",       type: VARCHAR(100) }
+      - { name: ACCOUNT_MANAGER_EMAIL, source_column: "Account Manager Email", type: VARCHAR(255) }
+      - { name: FACILITY_CATEGORY,     source_column: "Facility Category",     type: VARCHAR(100) }
+      - { name: FACILITY_TYPE,         source_column: "Facility Type",         type: VARCHAR(100) }
+      - { name: PROVISTA_MEMBER,       source_column: "Provista Member",       type: VARCHAR(10) }
+      - { name: MEDASSETS_MEMBER,      source_column: "MedAssets Member",      type: VARCHAR(10), note: "all-null in sample data" }
+      - { name: CHA_MEMBER,            source_column: "CHA Member",            type: VARCHAR(10) }
+      - { name: EXCELERATE_MEMBER,     source_column: "Excelerate Member",     type: VARCHAR(50) }
+      - { name: EXCELERATE_DATE,       source_column: "Excelerate Date",       type: DATE }
+      - { name: VIZIENT_GROUP_1,       source_column: "Vizient Group 1",       type: VARCHAR(255) }
+      - { name: VIZIENT_GROUP_2,       source_column: "Vizient Group 2",       type: VARCHAR(255) }
+      - { name: VIZIENT_GROUP_3,       source_column: "Vizient Group 3",       type: VARCHAR(255) }
+      - { name: SUPPLY_PROGRAM,        source_column: "Supply Program",        type: VARCHAR(100) }
+      - { name: RX_GROUP,              source_column: "Rx Group",              type: VARCHAR(100) }
+      - { name: PROVISTA_GROUP,        source_column: "Provista Group",        type: VARCHAR(100) }
+      - { name: AMC_TIER_PRICING,      source_column: "AMC Tier Pricing",      type: VARCHAR(100) }
+
+  # --- Stubs: table names only, recovered from the .pbix diagram layout.
+  # Columns are unknown - pull real schema from the semantic model (XMLA/DMV)
+  # or its upstream source system before generating DDL for these. ---
+  - { name: ALIAS_DROPSHIP_REASON_CODES, columns: [] , status: TODO }
+  - { name: ALIAS_INVOICE,                columns: [], status: TODO }
+  - { name: ALIAS_ORIGINAL_PO_HEADER,     columns: [], status: TODO }
+  - { name: ALIAS_TIME,                   columns: [], status: TODO }
+  - { name: BUYER,                        columns: [], status: TODO }
+  - { name: COMPONENT_DETAILS,            columns: [], status: TODO }
+  - { name: COMPONENT_PRODUCT,            columns: [], status: TODO }
+  - { name: COMPONENT_PRODUCT_GROUP,      columns: [], status: TODO }
+  - { name: COMPONENT_UOM,                columns: [], status: TODO }
+  - { name: CUSTOMER_ACCOUNT,             columns: [], status: TODO }
+  - { name: DAILY_OPEN_PURCHASE_ORDERS,   columns: [], status: TODO }
+  - { name: DAILY_ORIGINAL_PURCHASE_ORDERS, columns: [], status: TODO }
+  - { name: DAILY_PO_RECEIVING,           columns: [], status: TODO }
+  - { name: DISPATCH_ERROR,               columns: [], status: TODO }
+  - { name: DROPSHIP_REASON_CODES,        columns: [], status: TODO }
+  - { name: IBT_DISPATCHES,               columns: [], status: TODO }
+  - { name: IBT_INVOICE,                  columns: [], status: TODO }
+  - { name: IBT_PO_RECEIVING,             columns: [], status: TODO }
+  - { name: IBT_SALES,                    columns: [], status: TODO }
+  - { name: INVENTORY_STATUS,             columns: [], status: TODO }
+  - { name: INVOICE,                      columns: [], status: TODO }
+  - { name: INVOICE_TYPE,                 columns: [], status: TODO }
+  - { name: LINE,                         columns: [], status: TODO }
+  - { name: LINE_TYPE,                    columns: [], status: TODO }
+  - { name: MEMBER_BUY_GROUP,             columns: [], status: TODO }
+  - { name: MONTH,                        columns: [], status: TODO }
+  - { name: ORDER,                        columns: [], status: TODO }
+  - { name: ORGANIZATION,                 columns: [], status: TODO }
+  - { name: ORIGINAL_PO_HEADER,           columns: [], status: TODO }
+  - { name: PRODUCT_PROF_DIM,             columns: [], status: TODO }
+  - { name: PRODUCT_PROF_FACT,            columns: [], status: TODO }
+  - { name: PACK_COMPONENT,               columns: [], status: TODO }
+  - { name: PACK_SUPPLIER,                columns: [], status: TODO }
+  - { name: PRIORITY,                     columns: [], status: TODO }
+  - { name: PRODUCT,                      columns: [], status: TODO }
+  - { name: PRODUCT_GROUP,                columns: [], status: TODO }
+  - { name: PRODUCT_UOM,                  columns: [], status: TODO }
+  - { name: RECEIVING_DC,                 columns: [], status: TODO }
+  - { name: SECURITY,                     columns: [], status: TODO }
+  - { name: SHIPPING_DC,                  columns: [], status: TODO }
+  - { name: SPECIAL_CHARACTERISTIC,       columns: [], status: TODO }
+  - { name: STATUS_CODE,                  columns: [], status: TODO }
+  - { name: SUPPLIER,                     columns: [], status: TODO }
+  - { name: TIME,                         columns: [], status: TODO }
+  - { name: TIME_PROMISE,                 source_table: "Time(Promise)", columns: [], status: TODO }
+
+copy_options:
+  on_error: ABORT_STATEMENT
+  purge: false
+  force: false
