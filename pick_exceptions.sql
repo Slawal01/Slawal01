@@ -1,3 +1,9 @@
+/*
+  NOTE: SO_PICK_DETAIL needs a ZONE_CODE column on every server.
+  If any server doesn't have one, the whole query will fail with an
+  "Invalid column name" error. Run the query once and it will tell you
+  whether every server has the column.
+*/
 SELECT
   SPD.PICK_BATCH_RL_DATE,
   SPD.CUST_SHIP_TO_ID,
