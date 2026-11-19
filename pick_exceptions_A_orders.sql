@@ -1,4 +1,3 @@
--- Pick exceptions (location or qty mismatch) for completed picks on A-orders, all DCs
 SELECT
   SPD.PICK_BATCH_RL_DATE,
   SPD.CUST_SHIP_TO_ID,
@@ -1437,4 +1436,4 @@ WHERE
   OR   SPD.QTY_CONFIRMED  <>  SPD.QTY_PICK)
   AND  SPD.STATUS  =  'C'
   AND  SPD.SO_ID  LIKE  'A%'
-  );
+  )
